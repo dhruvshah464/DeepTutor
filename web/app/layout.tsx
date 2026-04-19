@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Lora } from "next/font/google";
 import "./globals.css";
 import ThemeScript from "@/components/ThemeScript";
 import { AppShellProvider } from "@/context/AppShellContext";
+import { AuthProvider } from "@/context/AuthContext";
 import { I18nClientBridge } from "@/i18n/I18nClientBridge";
 
 const fontSans = Plus_Jakarta_Sans({
@@ -33,11 +34,13 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className="font-sans bg-[var(--background)] text-[var(--foreground)]">
-        <AppShellProvider>
-          <I18nClientBridge>
-            {children}
-          </I18nClientBridge>
-        </AppShellProvider>
+        <AuthProvider>
+          <AppShellProvider>
+            <I18nClientBridge>
+              {children}
+            </I18nClientBridge>
+          </AppShellProvider>
+        </AuthProvider>
       </body>
     </html>
   );

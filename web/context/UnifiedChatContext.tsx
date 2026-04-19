@@ -520,7 +520,9 @@ export function UnifiedChatProvider({ children }: { children: React.ReactNode })
     (key: string) => {
       const existing = runnersRef.current.get(key);
       if (existing) {
-        if (!existing.client.connected) existing.client.connect();
+        if (!existing.client.connected && !existing.client.connecting) {
+          existing.client.connect();
+        }
         return existing;
       }
       const record = {
@@ -528,8 +530,10 @@ export function UnifiedChatProvider({ children }: { children: React.ReactNode })
         client: new UnifiedWSClient(
           (event) => handleRunnerEvent(record.key, event),
           () => {
+            // Only mark as failed if the session is actively streaming
+            // (not if we just completed normally)
             const session = stateRef.current.sessions[record.key];
-            if (session?.isStreaming) {
+            if (session?.isStreaming && session?.status === "running") {
               dispatch({ type: "STREAM_END", key: record.key, status: "failed" });
             }
           },
@@ -543,22 +547,31 @@ export function UnifiedChatProvider({ children }: { children: React.ReactNode })
   );
 
   const sendThroughRunner = useCallback(
-    function dispatchToRunner(key: string, msg: ChatMessage, attempt = 0) {
+    async function dispatchToRunner(key: string, msg: ChatMessage) {
       const runner = ensureRunner(key);
-      if (!runner.client.connected) {
-        if (attempt >= 10) {
-          console.error("WebSocket failed to connect after retries");
-          dispatch({ type: "STREAM_END", key, status: "failed" });
-          return;
-        }
-        const timerId = setTimeout(() => {
-          retryTimersRef.current.delete(timerId);
-          dispatchToRunner(key, msg, attempt + 1);
-        }, 200);
-        retryTimersRef.current.add(timerId);
+      // If already connected, send immediately
+      if (runner.client.connected) {
+        runner.client.send(msg);
         return;
       }
-      runner.client.send(msg);
+      // If connecting, the WS client will queue the message internally
+      if (runner.client.connecting) {
+        runner.client.send(msg);
+        return;
+      }
+      // Otherwise, wait for connection with a generous timeout
+      try {
+        const ok = await runner.client.waitForConnection(10000);
+        if (ok) {
+          runner.client.send(msg);
+        } else {
+          console.error("WebSocket failed to connect after retries");
+          dispatch({ type: "STREAM_END", key, status: "failed" });
+        }
+      } catch {
+        console.error("WebSocket connection error");
+        dispatch({ type: "STREAM_END", key, status: "failed" });
+      }
     },
     [ensureRunner],
   );

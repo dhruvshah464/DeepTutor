@@ -56,3 +56,10 @@ class UnifiedContext:
     history_context: str = ""
     memory_context: str = ""
     metadata: dict[str, Any] = field(default_factory=dict)
+
+    # SaaS tenant context
+    user_id: str = ""
+    org_id: str = ""
+    user_role: str = "user"
+    org_role: str = ""
+    plan_tier: str = "free"

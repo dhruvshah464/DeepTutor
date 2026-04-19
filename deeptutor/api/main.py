@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()  # Load .env before any config is initialized
+
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -83,6 +86,22 @@ async def lifespan(app: FastAPI):
     # Execute on startup
     logger.info("Application startup")
 
+    # Initialize SaaS database
+    try:
+        from deeptutor.database.engine import init_db
+        await init_db()
+        logger.info("Database initialized")
+    except Exception as e:
+        logger.warning(f"Database initialization skipped: {e}")
+
+    # Seed default data (plans, etc.)
+    try:
+        from deeptutor.database.seed import seed_plans
+        await seed_plans()
+        logger.info("Default data seeded")
+    except Exception as e:
+        logger.warning(f"Data seeding skipped: {e}")
+
     # Validate configuration consistency
     validate_tool_consistency()
 
@@ -134,6 +153,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Failed to stop EventBus: {e}")
 
+    # Dispose database engine
+    try:
+        from deeptutor.database.engine import dispose_engine
+        await dispose_engine()
+        logger.info("Database engine disposed")
+    except Exception as e:
+        logger.warning(f"Failed to dispose database engine: {e}")
+
 
 app = FastAPI(
     title="DeepTutor API",
@@ -172,6 +199,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Security middleware (rate limiting + security headers)
+try:
+    from deeptutor.security.rate_limiter import RateLimitMiddleware
+    from deeptutor.security.headers import SecurityHeadersMiddleware
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(SecurityHeadersMiddleware)
+    logger.info("Security middleware loaded (rate limiter + headers)")
+except Exception as e:
+    logger.warning(f"Security middleware not loaded: {e}")
 
 # Mount a filtered view over user outputs.
 # Only whitelisted artifact paths are readable through the static handler.
@@ -216,7 +253,18 @@ from deeptutor.api.routers import (
     vision_solver,
 )
 
-# Include routers
+# SaaS routers
+from deeptutor.api.routers import (
+    admin,
+    analytics,
+    auth,
+    billing,
+    health,
+    learning,
+    orgs,
+)
+
+# Include existing routers
 app.include_router(solve.router, prefix="/api/v1", tags=["solve"])
 app.include_router(chat.router, prefix="/api/v1", tags=["chat"])
 app.include_router(question.router, prefix="/api/v1/question", tags=["question"])
@@ -236,6 +284,15 @@ app.include_router(tutorbot.router, prefix="/api/v1/tutorbot", tags=["tutorbot"]
 
 # Unified WebSocket endpoint
 app.include_router(unified_ws.router, prefix="/api/v1", tags=["unified-ws"])
+
+# SaaS routers
+app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
+app.include_router(orgs.router, prefix="/api/v1", tags=["orgs"])
+app.include_router(billing.router, prefix="/api/v1", tags=["billing"])
+app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
+app.include_router(learning.router, prefix="/api/v1", tags=["learning"])
+app.include_router(analytics.router, prefix="/api/v1", tags=["analytics"])
+app.include_router(health.router, tags=["health"])
 
 
 @app.get("/")

@@ -15,6 +15,48 @@
 
 services:
   # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: deeptutor-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: deeptutor
+      POSTGRES_USER: ${DB_USER:-deeptutor}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-deeptutor}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-deeptutor}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - deeptutor-network
+
+  # ============================================
+  # Redis (Rate limiting, caching, sessions)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: deeptutor-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - deeptutor-network
+
+  # ============================================
   # All-in-One DeepTutor Service
   # ============================================
   deeptutor:
@@ -27,6 +69,11 @@ services:
         - BACKEND_PORT=${BACKEND_PORT:-8001}
     container_name: deeptutor
     restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "${BACKEND_PORT:-8001}:${BACKEND_PORT:-8001}"
       - "${FRONTEND_PORT:-3782}:${FRONTEND_PORT:-3782}"
@@ -36,6 +83,14 @@ services:
       - .env
 
     environment:
+      # Database
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER:-deeptutor}:${DB_PASSWORD:-deeptutor}@postgres:5432/deeptutor
+      # Auth
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-change-in-production}
+      - AUTH_REQUIRED=${AUTH_REQUIRED:-true}
+      # Billing
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - STRIPE_WEBHOOK_SECRET=${STRIPE_WEBHOOK_SECRET:-}
       # LLM Configuration (Required)
       - LLM_BINDING=${LLM_BINDING:-openai}
       - LLM_MODEL=${LLM_MODEL}
@@ -86,7 +141,7 @@ services:
       - ./data/knowledge_bases:/app/data/knowledge_bases
 
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${BACKEND_PORT:-8001}/"]
+      test: ["CMD", "curl", "-f", "http://localhost:${BACKEND_PORT:-8001}/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -101,3 +156,12 @@ services:
 networks:
   deeptutor-network:
     driver: bridge
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

@@ -106,6 +106,9 @@ export class UnifiedWSClient {
   private ws: WebSocket | null = null;
   private onEvent: EventHandler;
   private onClose?: () => void;
+  private _connectPromise: Promise<void> | null = null;
+  private _pendingMessages: ChatMessage[] = [];
+  private _reconnecting = false;
 
   constructor(onEvent: EventHandler, onClose?: () => void) {
     this.onEvent = onEvent;
@@ -114,31 +117,82 @@ export class UnifiedWSClient {
 
   connect(): void {
     if (this.ws && this.ws.readyState <= WebSocket.OPEN) return;
+    this._doConnect();
+  }
 
+  private _doConnect(): void {
     const url = wsUrl("/api/v1/ws");
     this.ws = new WebSocket(url);
 
-    this.ws.onmessage = (ev) => {
-      try {
-        const event: StreamEvent = JSON.parse(ev.data);
-        this.onEvent(event);
-      } catch {
-        console.warn("Unparseable WS message:", ev.data);
-      }
-    };
+    this._connectPromise = new Promise<void>((resolve, reject) => {
+      const ws = this.ws!;
 
-    this.ws.onclose = () => {
-      this.ws = null;
-      this.onClose?.();
-    };
+      ws.onopen = () => {
+        resolve();
+        // Flush any messages that were queued while connecting
+        const queued = [...this._pendingMessages];
+        this._pendingMessages = [];
+        for (const msg of queued) {
+          this.send(msg);
+        }
+      };
 
-    this.ws.onerror = (err) => {
-      console.error("WS error:", err);
-    };
+      ws.onmessage = (ev) => {
+        try {
+          const event: StreamEvent = JSON.parse(ev.data);
+          this.onEvent(event);
+        } catch {
+          console.warn("Unparseable WS message:", ev.data);
+        }
+      };
+
+      ws.onclose = () => {
+        this.ws = null;
+        this._connectPromise = null;
+        reject(new Error("WebSocket closed before open"));
+        this.onClose?.();
+      };
+
+      ws.onerror = (err) => {
+        console.error("WS error:", err);
+      };
+    });
+  }
+
+  /**
+   * Wait for the WebSocket to reach OPEN state.
+   * Returns a promise that resolves when connected or rejects on failure.
+   */
+  async waitForConnection(timeoutMs = 10000): Promise<boolean> {
+    if (this.connected) return true;
+
+    // If not connecting, start a connection
+    if (!this._connectPromise) {
+      this.connect();
+    }
+
+    if (!this._connectPromise) return false;
+
+    try {
+      await Promise.race([
+        this._connectPromise,
+        new Promise<void>((_, reject) =>
+          setTimeout(() => reject(new Error("Connection timeout")), timeoutMs),
+        ),
+      ]);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   send(msg: ChatMessage): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      // Queue the message if we're connecting
+      if (this.ws && this.ws.readyState === WebSocket.CONNECTING) {
+        this._pendingMessages.push(msg);
+        return;
+      }
       console.error("WebSocket not connected");
       return;
     }
@@ -146,11 +200,17 @@ export class UnifiedWSClient {
   }
 
   disconnect(): void {
+    this._pendingMessages = [];
+    this._connectPromise = null;
     this.ws?.close();
     this.ws = null;
   }
 
   get connected(): boolean {
     return this.ws?.readyState === WebSocket.OPEN;
+  }
+
+  get connecting(): boolean {
+    return this.ws?.readyState === WebSocket.CONNECTING;
   }
 }
