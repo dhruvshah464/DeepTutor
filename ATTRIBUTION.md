@@ -118,12 +118,6 @@ Closed:
 
 Still open (tracked here, not silently skipped):
 
-- The three divergent `MODEL_PRICING` tables
-  (`logging/stats/llm_stats.py`, `agents/research/utils/token_tracker.py`,
-  `agents/solve/utils/token_tracker.py`) are not yet consolidated — Phase 4
-  builds the real model metadata layer on `provider_registry.py`'s
-  `ProviderSpec` pattern, and pricing belongs there rather than as a
-  standalone merge that Phase 4 would have to redo.
 - `BaseAgent._shared_stats` (the process-global, module-keyed dict) still
   exists for the CLI's own pretty-printed run summary; it was not deleted,
   only bypassed for the path that matters for SaaS billing/observability
@@ -142,9 +136,51 @@ Everything under `meridian/learner/`, `meridian/knowledge/`,
 `meridian/curriculum/`, `meridian/evaluation/`, `meridian/observability/`,
 and `meridian/bridge/` is new original work added after the initial SaaS
 scaffolding, per the phased plan in `ARCHITECTURE.md`. These did not exist
-in DeepTutor and are Meridian's actual differentiator: a Beta-Bernoulli
-learner mastery model, a prerequisite concept DAG, an adaptive curriculum
-planner, an LLM evaluation/routing lab, and real distributed tracing.
+in DeepTutor. As of this writing: 62 files, ~7,200 lines under `meridian/`,
+with 97 tests specifically for the new Phase 2-6 modules (part of a
+294-passing/15-known-failing full suite, up from a 188-passing/27-failing
+baseline — see "Baseline test triage" below for what those 15 are).
+Verify with `git ls-files meridian/ | xargs wc -l` and `pytest -q`.
+
+| Module | What it is | Tests |
+|---|---|---|
+| `meridian/learner/mastery.py` | Beta-Bernoulli mastery kernel: `mastery = α/(α+β)`, `confidence` from posterior variance, time-decay toward the prior, difficulty-weighted updates | 12 property tests |
+| `meridian/learner/service.py` | ORM adapter for the kernel (`record_event`, `get_mastery_map`) | 5 tests against a real in-memory DB |
+| `meridian/learner/misconceptions.py` | Signature-matching against known error patterns per concept | 7 tests |
+| `meridian/knowledge/graph.py` | Prerequisite DAG: transitive closure, cycle rejection, topological order | 8 tests |
+| `meridian/knowledge/diagnosis.py` | Walks the DAG upstream from a target concept and names the weakest link — the headline demo behavior | 6 tests, including a full scripted-event-log replay through the real kernel |
+| `meridian/knowledge/seed_calculus.py` | The hand-authored one-domain DAG (11 concepts, arithmetic → gradient_descent) prototyping concept tagging before general extraction | — (seed data) |
+| `meridian/curriculum/planner.py` | Priority-weighted topological scheduler over the DAG, respecting a time budget | 7 tests |
+| `meridian/curriculum/autopilot.py` | Composes the above into the full diagnose→plan→teach→assess→replan loop | 3 tests running the whole loop end to end |
+| `meridian/evaluation/model_metadata.py` | Consolidates the three previously-divergent `MODEL_PRICING` tables into one catalog with pricing, context window, and capability metadata | 5 tests |
+| `meridian/evaluation/harness.py` | Scores a model against a set of cases via an injected `model_fn` — testable offline, no live API needed | 6 tests with a fake model |
+| `meridian/evaluation/router.py` | Picks a model from the catalog given hard constraints (context window, capabilities) and a cost/quality-weighted policy | 6 tests |
+| `meridian/observability/spans.py` | Contextvars-propagated span model (duration, parent-child, status) — what `core/trace.py` isn't | 8 tests, including a concurrency-isolation test |
+| `meridian/observability/export.py` | Structured-log sink always; OpenTelemetry export if installed (optional dependency) | 2 tests |
+| `meridian/observability/event_log.py` | The subscriber that finally drains `deeptutor.events.EventBus` | 4 tests |
+| `meridian/platform/quota.py` | Enforces `Plan.max_messages_per_day`, which was seeded and returned but never checked | 5 tests against a real in-memory DB |
+| `meridian/persistence/mirror.py` | Non-fatal Postgres mirror of the engine's SQLite turn/session store | exercised via the quota/service tests above |
+
+No performance, latency, or cost numbers are claimed anywhere above beyond
+"N tests pass" — that's the one class of claim this repository's own test
+suite reproduces on demand. Anything requiring a live LLM call (a real
+`meridian/evaluation/harness.py` benchmark run, an actual routing table
+built from measured quality scores) has not been run in this sandboxed
+build environment and is not claimed as done.
+
+### Baseline test triage
+
+The pre-existing 15 failures (of 294 collected, non-skipped tests) left
+after `pytest -q` are unrelated to this fork's own changes — verified by
+reproducing each in isolation before touching anything nearby:
+research request-config mapping, the provider-CLI docs contract, litellm
+factory mocking assumptions that predate this work, a RAG pipeline
+integration test needing embedding config this environment doesn't have,
+and one test-order-dependent `model_catalog` pair. Two *were* fixed as
+part of Phase 0 (`test_config_loader`, `test_prompt_parity` — both were
+silently-broken checks, not merely failing ones; see that commit for
+detail), and the stale `src` → `deeptutor` import bug that caused the
+bulk of the original 27 failures is fixed.
 
 ## License
 

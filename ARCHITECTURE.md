@@ -92,15 +92,24 @@ Each phase is independently shippable and demoable; later phases depend on
 earlier ones being real (Phase 3's replanning needs Phase 2's mastery
 updates; Phase 6 composes 2 through 5).
 
-| Phase | Scope |
-|---|---|
-| 0 | Ownership & attribution fix; `meridian/` skeleton; CI restored |
-| 1 | Close the SaaS layer's security holes; consolidate the data path; capture real usage |
-| 2 | Learner digital twin — the differentiator |
-| 3 | Adaptive curriculum planner |
-| 4 | Evaluation lab & model router |
-| 5 | Observability |
-| 6 | Compose 2-5 into the "Learning Autopilot" demo; reproducible writeup |
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Ownership & attribution fix; `meridian/` skeleton; CI restored | Done |
+| 1 | Close the SaaS layer's security holes; consolidate the data path; capture real usage | Done |
+| 2 | Learner digital twin — the differentiator | Done |
+| 3 | Adaptive curriculum planner | Done |
+| 4 | Evaluation lab & model router | Done (core) |
+| 5 | Observability | Done (core) |
+| 6 | Compose 2-5 into the "Learning Autopilot"; misconception detection; writeup | Done |
+
+"Done (core)" on Phases 4-5 means the primitives are real, tested, and
+wired into the actual production call path — not that every extension
+listed in the original phase scope shipped. See `ATTRIBUTION.md`'s
+per-phase status tables for exactly what's still open in each phase
+(e.g. Phase 4's benchmark suite needs a live LLM provider to produce
+real numbers, which this sandboxed build environment doesn't have —
+the harness that would run it is built and tested with a fake model,
+per its own module docstring).
 
 See `ATTRIBUTION.md` for what each phase actually shipped versus what
 remains a documented, known gap.

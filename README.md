@@ -42,18 +42,29 @@ Meridian adds, as original work in the `meridian/` package:
   was fixed and what remains a known gap.
 - **An LLM evaluation lab and model router**, built on DeepTutor's existing
   provider-abstraction chokepoint, with real usage/cost capture instead of
-  a word-count heuristic.
-- **Real observability**: span-based tracing with context propagation,
-  wired into the engine's existing (previously unused) trace hooks.
+  a word-count heuristic, and a model metadata catalog replacing three
+  previously-divergent hardcoded pricing tables.
+- **Real observability**: a contextvars-propagated span model with
+  duration and parent-child tracking (what the engine's own trace-metadata
+  plumbing isn't), wired into the one chokepoint every turn passes through
+  regardless of capability; an error-rate tracker that finally receives
+  real production traffic instead of none; a dead event bus repurposed
+  with bounded backpressure and an actual subscriber.
 
 See [ARCHITECTURE.md](./ARCHITECTURE.md) for the directory-level boundary
 between inherited and original code, and [ATTRIBUTION.md](./ATTRIBUTION.md)
-for the full inherited-vs-original breakdown with line counts and commit
-references.
+for the full inherited-vs-original breakdown with line counts, commit
+references, and a per-module table of what exists and what's tested.
 
 **No performance, scale, or accuracy claims are made here that have not
-been measured in this repository.** Where a number is quoted (e.g. in
-`meridian/evaluation/`), it links to the run that produced it.
+been measured in this repository.** The one class of claim reproduced on
+demand is test counts: `pytest -q` — 294 passing (up from a 188-passing
+baseline), 15 known pre-existing failures unrelated to this fork's changes
+(see `ATTRIBUTION.md`'s baseline-triage section for what those are and why).
+No benchmark numbers, latency figures, or a published model-routing table
+exist yet — those require a live LLM provider this build environment
+doesn't have; the harness and router that would produce them are built and
+tested against a fake model instead of claimed as already run.
 
 ## What's original here
 
