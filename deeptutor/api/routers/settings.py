@@ -12,7 +12,7 @@ import json
 import time
 from typing import Any, List, Literal, Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
@@ -21,8 +21,9 @@ from deeptutor.services.embedding.client import reset_embedding_client
 from deeptutor.services.llm.client import reset_llm_client
 from deeptutor.services.llm.config import clear_llm_config_cache
 from deeptutor.services.path_service import get_path_service
+from meridian.platform.auth.dependencies import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 _path_service = get_path_service()
 SETTINGS_FILE = _path_service.get_settings_file("interface")

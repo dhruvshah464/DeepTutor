@@ -5,7 +5,7 @@ Guided Learning API Router
 Provides session creation, learning progress management, and chat interaction.
 """
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
 from deeptutor.agents.base_agent import BaseAgent
@@ -17,8 +17,10 @@ from deeptutor.services.config import PROJECT_ROOT, load_config_with_main
 from deeptutor.services.llm import get_llm_config
 from deeptutor.services.notebook import notebook_manager
 from deeptutor.services.settings.interface_settings import get_ui_language
+from meridian.platform.auth.dependencies import get_current_user, get_ws_user
 
 router = APIRouter()
+_secure = APIRouter(dependencies=[Depends(get_current_user)])
 _guide_manager: GuideManager | None = None
 
 # Initialize logger with config
@@ -121,7 +123,7 @@ def _build_user_input_from_records(records: list[dict]) -> str:
 # === REST API Endpoints ===
 
 
-@router.post("/create_session")
+@_secure.post("/create_session")
 async def create_session(request: CreateSessionRequest):
     """
     Create a new guided learning session.
@@ -186,7 +188,7 @@ async def create_session(request: CreateSessionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/start")
+@_secure.post("/start")
 async def start_learning(request: SessionActionRequest):
     """
     Start learning (get the first knowledge point).
@@ -200,7 +202,7 @@ async def start_learning(request: SessionActionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/navigate")
+@_secure.post("/navigate")
 async def navigate_to_knowledge(request: NavigateRequest):
     """
     Navigate to any knowledge point.
@@ -214,7 +216,7 @@ async def navigate_to_knowledge(request: NavigateRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/complete")
+@_secure.post("/complete")
 async def complete_learning(request: SessionActionRequest):
     """
     Complete guided learning and generate a summary.
@@ -229,7 +231,7 @@ async def complete_learning(request: SessionActionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/chat")
+@_secure.post("/chat")
 async def chat(request: ChatRequest):
     """
     Send a chat message.
@@ -243,7 +245,7 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/fix_html")
+@_secure.post("/fix_html")
 async def fix_html(request: FixHtmlRequest):
     """
     Fix HTML page bugs.
@@ -257,7 +259,7 @@ async def fix_html(request: FixHtmlRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/retry_page")
+@_secure.post("/retry_page")
 async def retry_page(request: RetryPageRequest):
     """
     Retry a failed page generation.
@@ -271,7 +273,7 @@ async def retry_page(request: RetryPageRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/reset")
+@_secure.post("/reset")
 async def reset_session(request: SessionActionRequest):
     """
     Reset the current guided learning session.
@@ -285,7 +287,7 @@ async def reset_session(request: SessionActionRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/session/{session_id}")
+@_secure.delete("/session/{session_id}")
 async def delete_session(session_id: str):
     """
     Permanently delete a guided learning session.
@@ -299,7 +301,7 @@ async def delete_session(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/sessions")
+@_secure.get("/sessions")
 async def list_sessions():
     """
     List all guided learning sessions (summary only, no HTML).
@@ -313,7 +315,7 @@ async def list_sessions():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/session/{session_id}")
+@_secure.get("/session/{session_id}")
 async def get_session(session_id: str):
     """
     Get session information.
@@ -331,7 +333,7 @@ async def get_session(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/session/{session_id}/html")
+@_secure.get("/session/{session_id}/html")
 async def get_current_html(session_id: str):
     """
     Get the current HTML page.
@@ -349,7 +351,7 @@ async def get_current_html(session_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/session/{session_id}/pages")
+@_secure.get("/session/{session_id}/pages")
 async def get_session_pages(session_id: str):
     """
     Get page generation status and ready HTML pages.
@@ -371,7 +373,7 @@ async def get_session_pages(session_id: str):
 
 
 @router.websocket("/ws/{session_id}")
-async def websocket_guide(websocket: WebSocket, session_id: str):
+async def websocket_guide(websocket: WebSocket, session_id: str, user: dict = Depends(get_ws_user)):
     """
     WebSocket endpoint for real-time interaction.
 
@@ -479,7 +481,12 @@ async def websocket_guide(websocket: WebSocket, session_id: str):
             pass  # Connection already closed
 
 
-@router.get("/health")
+@_secure.get("/health")
 async def health_check():
     """Health check"""
     return {"status": "healthy", "service": "guide"}
+
+
+# All non-websocket routes above require authentication; websocket routes
+# authenticate individually via get_ws_user (see each handler).
+router.include_router(_secure)

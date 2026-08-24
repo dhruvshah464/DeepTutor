@@ -12,8 +12,11 @@ router = importlib.import_module("deeptutor.api.routers.memory").router
 
 
 def _build_app() -> FastAPI:
+    from meridian.platform.auth.dependencies import get_current_user
+
     app = FastAPI()
     app.include_router(router, prefix="/api/v1/memory")
+    app.dependency_overrides[get_current_user] = lambda: {"sub": "test-user", "role": "user", "org_id": None}
     return app
 
 

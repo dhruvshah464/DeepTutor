@@ -25,8 +25,12 @@ else:  # pragma: no cover - optional dependency in lightweight envs
 def _build_app() -> FastAPI:
     if FastAPI is None or router is None:  # pragma: no cover - guarded by pytestmark
         raise RuntimeError("fastapi is not installed")
+    from meridian.platform.auth.dependencies import get_current_user, get_ws_user
+
     app = FastAPI()
     app.include_router(router, prefix="/api/v1/knowledge")
+    app.dependency_overrides[get_current_user] = lambda: {"sub": "test-user", "role": "user", "org_id": None}
+    app.dependency_overrides[get_ws_user] = lambda: {"sub": "test-user", "role": "user", "org_id": None}
     return app
 
 

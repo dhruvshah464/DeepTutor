@@ -6,14 +6,15 @@ Provides notebook creation, querying, updating, deletion, and record management 
 import json
 from typing import AsyncGenerator, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from deeptutor.agents.notebook import NotebookSummarizeAgent
 from deeptutor.services.notebook import notebook_manager
+from meridian.platform.auth.dependencies import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 # === Request/Response Models ===

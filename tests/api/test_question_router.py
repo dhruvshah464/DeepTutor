@@ -113,8 +113,12 @@ def _load_question_router_module(monkeypatch: pytest.MonkeyPatch):
 
 
 def _build_app(router_module) -> FastAPI:
+    from meridian.platform.auth.dependencies import get_current_user, get_ws_user
+
     app = FastAPI()
     app.include_router(router_module.router, prefix="/api/v1/question")
+    app.dependency_overrides[get_current_user] = lambda: {"sub": "test-user", "role": "user", "org_id": None}
+    app.dependency_overrides[get_ws_user] = lambda: {"sub": "test-user", "role": "user", "org_id": None}
     return app
 
 

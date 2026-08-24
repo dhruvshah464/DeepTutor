@@ -3,9 +3,11 @@
 Agent Configuration API - Provides agent metadata for data-driven UI.
 """
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 
-router = APIRouter()
+from meridian.platform.auth.dependencies import get_current_user
+
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 # Agent registry - single source of truth for agent UI metadata
 AGENT_REGISTRY = {

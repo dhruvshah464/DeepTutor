@@ -608,12 +608,40 @@ class TurnRuntimeManager:
             )
             persisted = payload
         self._mirror_event_to_workspace(execution, persisted)
+        await self._mirror_event_to_postgres(execution, event, persisted)
         async with self._lock:
             subscribers = list(self._executions.get(execution.turn_id, execution).subscribers)
         for subscriber in subscribers:
             with contextlib.suppress(asyncio.QueueFull):
                 subscriber.queue.put_nowait(persisted)
         return persisted
+
+    @staticmethod
+    async def _mirror_event_to_postgres(
+        execution: _TurnExecution, event: StreamEvent, payload: dict[str, Any]
+    ) -> None:
+        """Mirror turn events into the Meridian SaaS Postgres layer.
+
+        Non-fatal by design (see meridian.persistence.mirror docstring) —
+        exceptions never propagate here, matching _mirror_event_to_workspace.
+        """
+        try:
+            from meridian.persistence.mirror import mirror_turn_event
+
+            await mirror_turn_event(
+                session_id=execution.session_id,
+                turn_id=execution.turn_id,
+                capability=execution.capability,
+                user_id=execution.payload.get("user_id"),
+                org_id=execution.payload.get("org_id"),
+                language=str(execution.payload.get("language", "en") or "en"),
+                user_content=str(execution.payload.get("content", "") or ""),
+                event_type=payload.get("type", ""),
+                event_content=payload.get("content", "") or "",
+                event_metadata=payload.get("metadata"),
+            )
+        except Exception:
+            logger.debug("Failed to mirror turn event to Postgres", exc_info=True)
 
     @staticmethod
     def _mirror_event_to_workspace(execution: _TurnExecution, payload: dict[str, Any]) -> None:

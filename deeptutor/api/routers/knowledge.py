@@ -15,6 +15,7 @@ from uuid import uuid4
 from fastapi import (
     APIRouter,
     BackgroundTasks,
+    Depends,
     File,
     Form,
     HTTPException,
@@ -38,6 +39,7 @@ from deeptutor.services.rag.components.routing import FileTypeRouter
 from deeptutor.services.rag.factory import DEFAULT_PROVIDER, has_pipeline, normalize_provider_name
 from deeptutor.utils.document_validator import DocumentValidator
 from deeptutor.utils.error_utils import format_exception_message
+from meridian.platform.auth.dependencies import get_current_user, get_ws_user
 
 # Initialize logger with config
 config = load_config_with_main("main.yaml", PROJECT_ROOT)
@@ -45,6 +47,7 @@ log_dir = config.get("paths", {}).get("user_log_dir") or config.get("logging", {
 logger = get_logger("Knowledge", level="INFO", log_dir=log_dir)
 
 router = APIRouter()
+_secure = APIRouter(dependencies=[Depends(get_current_user)])
 
 # Constants for byte conversions
 BYTES_PER_GB = 1024**3
@@ -389,7 +392,7 @@ async def run_upload_processing_task(
             task_stream_manager.emit_failed(task_id, error_msg)
 
 
-@router.get("/health")
+@_secure.get("/health")
 async def health_check():
     """Health check endpoint"""
     try:
@@ -408,7 +411,7 @@ async def health_check():
         return {"status": "error", "error": str(e), "traceback": traceback.format_exc()}
 
 
-@router.get("/rag-providers")
+@_secure.get("/rag-providers")
 async def get_rag_providers():
     """Get list of available RAG providers."""
     try:
@@ -421,7 +424,7 @@ async def get_rag_providers():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/configs")
+@_secure.get("/configs")
 async def get_all_kb_configs():
     """Get all knowledge base configurations from centralized config file."""
     try:
@@ -434,7 +437,7 @@ async def get_all_kb_configs():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{kb_name}/config")
+@_secure.get("/{kb_name}/config")
 async def get_kb_config(kb_name: str):
     """Get configuration for a specific knowledge base."""
     try:
@@ -448,7 +451,7 @@ async def get_kb_config(kb_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/{kb_name}/config")
+@_secure.put("/{kb_name}/config")
 async def update_kb_config(kb_name: str, config: dict):
     """Update configuration for a specific knowledge base."""
     try:
@@ -467,7 +470,7 @@ async def update_kb_config(kb_name: str, config: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/configs/sync")
+@_secure.post("/configs/sync")
 async def sync_configs_from_metadata():
     """Sync all KB configurations from their metadata.json files to centralized config."""
     try:
@@ -481,7 +484,7 @@ async def sync_configs_from_metadata():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/default")
+@_secure.get("/default")
 async def get_default_kb():
     """Get the default knowledge base."""
     try:
@@ -493,7 +496,7 @@ async def get_default_kb():
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.put("/default/{kb_name}")
+@_secure.put("/default/{kb_name}")
 async def set_default_kb(kb_name: str):
     """Set the default knowledge base."""
     try:
@@ -512,7 +515,7 @@ async def set_default_kb(kb_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/list", response_model=list[KnowledgeBaseInfo])
+@_secure.get("/list", response_model=list[KnowledgeBaseInfo])
 async def list_knowledge_bases():
     """List all available knowledge bases with their details."""
     try:
@@ -586,7 +589,7 @@ async def list_knowledge_bases():
         raise HTTPException(status_code=500, detail=f"Failed to list knowledge bases: {e!s}")
 
 
-@router.get("/{kb_name}")
+@_secure.get("/{kb_name}")
 async def get_knowledge_base_details(kb_name: str):
     """Get detailed info for a specific KB."""
     try:
@@ -598,7 +601,7 @@ async def get_knowledge_base_details(kb_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{kb_name}")
+@_secure.delete("/{kb_name}")
 async def delete_knowledge_base(kb_name: str):
     """Delete a knowledge base."""
     try:
@@ -614,7 +617,7 @@ async def delete_knowledge_base(kb_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/tasks/{task_id}/stream")
+@_secure.get("/tasks/{task_id}/stream")
 async def stream_task_logs(task_id: str):
     """Stream task-specific logs for knowledge-base operations."""
     manager = get_task_stream_manager()
@@ -626,7 +629,7 @@ async def stream_task_logs(task_id: str):
     )
 
 
-@router.post("/{kb_name}/upload")
+@_secure.post("/{kb_name}/upload")
 async def upload_files(
     kb_name: str,
     background_tasks: BackgroundTasks,
@@ -688,7 +691,7 @@ async def upload_files(
         raise HTTPException(status_code=500, detail=formatted_error) from e
 
 
-@router.post("/create")
+@_secure.post("/create")
 async def create_knowledge_base(
     background_tasks: BackgroundTasks,
     name: str = Form(...),
@@ -776,7 +779,7 @@ async def create_knowledge_base(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{kb_name}/progress")
+@_secure.get("/{kb_name}/progress")
 async def get_progress(kb_name: str):
     """Get initialization progress for a knowledge base"""
     try:
@@ -791,7 +794,7 @@ async def get_progress(kb_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{kb_name}/progress/clear")
+@_secure.post("/{kb_name}/progress/clear")
 async def clear_progress(kb_name: str):
     """Clear progress file for a knowledge base (useful for stuck states)"""
     try:
@@ -803,7 +806,7 @@ async def clear_progress(kb_name: str):
 
 
 @router.websocket("/{kb_name}/progress/ws")
-async def websocket_progress(websocket: WebSocket, kb_name: str):
+async def websocket_progress(websocket: WebSocket, kb_name: str, user: dict = Depends(get_ws_user)):
     """WebSocket endpoint for real-time progress updates"""
     await websocket.accept()
 
@@ -924,7 +927,7 @@ async def websocket_progress(websocket: WebSocket, kb_name: str):
             pass
 
 
-@router.post("/{kb_name}/link-folder", response_model=LinkedFolderInfo)
+@_secure.post("/{kb_name}/link-folder", response_model=LinkedFolderInfo)
 async def link_folder(kb_name: str, request: LinkFolderRequest):
     """
     Link a local folder to a knowledge base.
@@ -951,7 +954,7 @@ async def link_folder(kb_name: str, request: LinkFolderRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/{kb_name}/linked-folders", response_model=list[LinkedFolderInfo])
+@_secure.get("/{kb_name}/linked-folders", response_model=list[LinkedFolderInfo])
 async def get_linked_folders(kb_name: str):
     """Get list of linked folders for a knowledge base."""
     try:
@@ -964,7 +967,7 @@ async def get_linked_folders(kb_name: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.delete("/{kb_name}/linked-folders/{folder_id}")
+@_secure.delete("/{kb_name}/linked-folders/{folder_id}")
 async def unlink_folder(kb_name: str, folder_id: str):
     """Unlink a folder from a knowledge base."""
     try:
@@ -980,7 +983,7 @@ async def unlink_folder(kb_name: str, folder_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/{kb_name}/sync-folder/{folder_id}")
+@_secure.post("/{kb_name}/sync-folder/{folder_id}")
 async def sync_folder(kb_name: str, folder_id: str, background_tasks: BackgroundTasks):
     """
     Sync files from a linked folder to the knowledge base.
@@ -1045,3 +1048,8 @@ async def sync_folder(kb_name: str, folder_id: str, background_tasks: Background
         raise HTTPException(status_code=404, detail=f"Knowledge base '{kb_name}' not found")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# All non-websocket routes above require authentication; websocket routes
+# authenticate individually via get_ws_user (see each handler).
+router.include_router(_secure)

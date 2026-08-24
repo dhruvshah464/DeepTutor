@@ -4,12 +4,13 @@ Unified session history API.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from deeptutor.services.session import get_sqlite_session_store
+from meridian.platform.auth.dependencies import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 class SessionRenameRequest(BaseModel):

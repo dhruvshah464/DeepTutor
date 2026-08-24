@@ -6,13 +6,14 @@ WebSocket endpoint for lightweight chat with session management.
 REST endpoints for session operations.
 """
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 
 from deeptutor.agents.chat import ChatAgent, SessionManager
 from deeptutor.logging import get_logger
 from deeptutor.services.config import PROJECT_ROOT, load_config_with_main
 from deeptutor.services.llm.config import get_llm_config
 from deeptutor.services.settings.interface_settings import get_ui_language
+from meridian.platform.auth.dependencies import get_current_user, get_ws_user
 
 # Initialize logger
 config = load_config_with_main("main.yaml", PROJECT_ROOT)
@@ -20,6 +21,7 @@ log_dir = config.get("paths", {}).get("user_log_dir") or config.get("logging", {
 logger = get_logger("ChatAPI", level="INFO", log_dir=log_dir)
 
 router = APIRouter()
+_secure = APIRouter(dependencies=[Depends(get_current_user)])
 
 # Initialize session manager
 session_manager = SessionManager()
@@ -30,7 +32,7 @@ session_manager = SessionManager()
 # =============================================================================
 
 
-@router.get("/chat/sessions")
+@_secure.get("/chat/sessions")
 async def list_sessions(limit: int = 20):
     """
     List recent chat sessions.
@@ -44,7 +46,7 @@ async def list_sessions(limit: int = 20):
     return session_manager.list_sessions(limit=limit, include_messages=False)
 
 
-@router.get("/chat/sessions/{session_id}")
+@_secure.get("/chat/sessions/{session_id}")
 async def get_session(session_id: str):
     """
     Get a specific chat session with full message history.
@@ -61,7 +63,7 @@ async def get_session(session_id: str):
     return session
 
 
-@router.delete("/chat/sessions/{session_id}")
+@_secure.delete("/chat/sessions/{session_id}")
 async def delete_session(session_id: str):
     """
     Delete a chat session.
@@ -83,7 +85,7 @@ async def delete_session(session_id: str):
 
 
 @router.websocket("/chat")
-async def websocket_chat(websocket: WebSocket):
+async def websocket_chat(websocket: WebSocket, user: dict = Depends(get_ws_user)):
     """
     WebSocket endpoint for chat with session and context management.
 
@@ -287,3 +289,8 @@ async def websocket_chat(websocket: WebSocket):
             await websocket.send_json({"type": "error", "message": str(e)})
         except Exception:
             pass
+
+
+# All non-websocket routes above require authentication; websocket routes
+# authenticate individually via get_ws_user (see each handler).
+router.include_router(_secure)

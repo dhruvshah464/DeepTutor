@@ -12,17 +12,47 @@ import json
 import logging
 from typing import Any
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
+
+from meridian.platform.auth.dependencies import get_ws_user
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 @router.websocket("/ws")
-async def unified_websocket(ws: WebSocket) -> None:
+async def unified_websocket(ws: WebSocket, user: dict = Depends(get_ws_user)) -> None:
     await ws.accept()
     closed = False
+    user_id = str(user.get("sub") or "")
+    org_id = user.get("org_id")
+    owned_session_ids: set[str] = set()
     subscription_tasks: dict[str, asyncio.Task[None]] = {}
+
+    async def _authorized_for_session(session_id: str) -> bool:
+        """Deny cross-user access to another user's turn/session stream.
+
+        A session this connection itself created (via ``message``/``start_turn``)
+        is trusted immediately without a lookup. Any other session_id must
+        resolve, via the Postgres mirror, to a ChatSession owned by this
+        connection's user (or the same org). Anonymous/local (non-SaaS)
+        deployments — where AUTH_REQUIRED=false and user_id is "anonymous" —
+        skip this check entirely, matching get_ws_user's own dev-mode bypass.
+        """
+        if user_id == "anonymous":
+            return True
+        if session_id in owned_session_ids:
+            return True
+        from meridian.persistence.mirror import get_session_owner
+
+        owner_user_id, owner_org_id = await get_session_owner(session_id)
+        if owner_user_id is None:
+            # Not mirrored yet (mirror lag, or a pre-SaaS/legacy session) —
+            # fail closed rather than guessing at ownership.
+            return False
+        if owner_user_id == user_id:
+            return True
+        return bool(org_id) and owner_org_id == org_id
 
     async def safe_send(data: dict[str, Any]) -> None:
         nonlocal closed
@@ -43,19 +73,31 @@ async def unified_websocket(ws: WebSocket) -> None:
         except asyncio.CancelledError:
             pass
 
-    async def subscribe_turn(turn_id: str, after_seq: int = 0) -> None:
+    async def subscribe_turn(turn_id: str, after_seq: int = 0) -> bool:
         from deeptutor.services.session import get_turn_runtime_manager
 
+        runtime = get_turn_runtime_manager()
+        turn = await runtime.store.get_turn(turn_id)
+        session_id = str((turn or {}).get("session_id") or "")
+        if not session_id or not await _authorized_for_session(session_id):
+            await safe_send({"type": "error", "content": f"Turn not found: {turn_id}"})
+            return False
+        owned_session_ids.add(session_id)
+
         async def _forward() -> None:
-            runtime = get_turn_runtime_manager()
             async for event in runtime.subscribe_turn(turn_id, after_seq=after_seq):
                 await safe_send(event)
 
         await stop_subscription(turn_id)
         subscription_tasks[turn_id] = asyncio.create_task(_forward())
+        return True
 
-    async def subscribe_session(session_id: str, after_seq: int = 0) -> None:
+    async def subscribe_session(session_id: str, after_seq: int = 0) -> bool:
         from deeptutor.services.session import get_turn_runtime_manager
+
+        if not await _authorized_for_session(session_id):
+            await safe_send({"type": "error", "content": f"Session not found: {session_id}"})
+            return False
 
         async def _forward() -> None:
             runtime = get_turn_runtime_manager()
@@ -65,6 +107,7 @@ async def unified_websocket(ws: WebSocket) -> None:
         key = f"session:{session_id}"
         await stop_subscription(key)
         subscription_tasks[key] = asyncio.create_task(_forward())
+        return True
 
     try:
         while not closed:
@@ -81,8 +124,9 @@ async def unified_websocket(ws: WebSocket) -> None:
                 from deeptutor.services.session import get_turn_runtime_manager
 
                 runtime = get_turn_runtime_manager()
+                msg = {**msg, "user_id": user_id, "org_id": org_id}
                 try:
-                    _, turn = await runtime.start_turn(msg)
+                    session, turn = await runtime.start_turn(msg)
                 except RuntimeError as exc:
                     await safe_send(
                         {
@@ -97,6 +141,7 @@ async def unified_websocket(ws: WebSocket) -> None:
                         }
                     )
                     continue
+                owned_session_ids.add(str(session.get("id") or ""))
                 await subscribe_turn(turn["id"], after_seq=0)
                 continue
 
@@ -141,6 +186,11 @@ async def unified_websocket(ws: WebSocket) -> None:
                 from deeptutor.services.session import get_turn_runtime_manager
 
                 runtime = get_turn_runtime_manager()
+                turn = await runtime.store.get_turn(turn_id)
+                session_id = str((turn or {}).get("session_id") or "")
+                if not session_id or not await _authorized_for_session(session_id):
+                    await safe_send({"type": "error", "content": f"Turn not found: {turn_id}"})
+                    continue
                 cancelled = await runtime.cancel_turn(turn_id)
                 if not cancelled:
                     await safe_send({"type": "error", "content": f"Turn not found: {turn_id}"})

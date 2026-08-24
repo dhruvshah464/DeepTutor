@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 
 from deeptutor.agents.solve import MainSolver, SolverSessionManager
 from deeptutor.api.utils.log_interceptor import LogInterceptor
@@ -21,6 +21,7 @@ from deeptutor.services.config import PROJECT_ROOT, load_config_with_main
 from deeptutor.services.llm import get_llm_config
 from deeptutor.services.path_service import get_path_service
 from deeptutor.services.settings.interface_settings import get_ui_language
+from meridian.platform.auth.dependencies import get_current_user, get_ws_user
 
 # Initialize logger with config
 config = load_config_with_main("main.yaml", PROJECT_ROOT)
@@ -28,6 +29,7 @@ log_dir = config.get("paths", {}).get("user_log_dir") or config.get("logging", {
 logger = get_logger("SolveAPI", level="INFO", log_dir=log_dir)
 
 router = APIRouter()
+_secure = APIRouter(dependencies=[Depends(get_current_user)])
 
 # Initialize session manager
 solver_session_manager = SolverSessionManager()
@@ -38,7 +40,7 @@ solver_session_manager = SolverSessionManager()
 # =============================================================================
 
 
-@router.get("/solve/sessions")
+@_secure.get("/solve/sessions")
 async def list_solver_sessions(limit: int = 20):
     """
     List recent solver sessions.
@@ -52,7 +54,7 @@ async def list_solver_sessions(limit: int = 20):
     return solver_session_manager.list_sessions(limit=limit, include_messages=False)
 
 
-@router.get("/solve/sessions/{session_id}")
+@_secure.get("/solve/sessions/{session_id}")
 async def get_solver_session(session_id: str):
     """
     Get a specific solver session with full message history.
@@ -69,7 +71,7 @@ async def get_solver_session(session_id: str):
     return session
 
 
-@router.delete("/solve/sessions/{session_id}")
+@_secure.delete("/solve/sessions/{session_id}")
 async def delete_solver_session(session_id: str):
     """
     Delete a solver session.
@@ -91,7 +93,7 @@ async def delete_solver_session(session_id: str):
 
 
 @router.websocket("/solve")
-async def websocket_solve(websocket: WebSocket):
+async def websocket_solve(websocket: WebSocket, user: dict = Depends(get_ws_user)):
     await websocket.accept()
 
     task_manager = TaskIDManager.get_instance()
@@ -412,3 +414,8 @@ async def websocket_solve(websocket: WebSocket):
             pass
         except Exception as e:
             logger.debug(f"Error closing WebSocket: {e}")
+
+
+# All non-websocket routes above require authentication; websocket routes
+# authenticate individually via get_ws_user (see each handler).
+router.include_router(_secure)

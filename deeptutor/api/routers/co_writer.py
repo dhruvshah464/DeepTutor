@@ -6,7 +6,7 @@ import traceback
 from typing import AsyncGenerator, Literal
 import uuid
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel
 
@@ -24,8 +24,9 @@ from deeptutor.core.stream_bus import StreamBus
 from deeptutor.logging import get_logger
 from deeptutor.services.config import PROJECT_ROOT, load_config_with_main
 from deeptutor.services.settings.interface_settings import get_ui_language
+from meridian.platform.auth.dependencies import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 # Initialize logger with config
 config = load_config_with_main("main.yaml", PROJECT_ROOT)

@@ -6,7 +6,7 @@ import re
 import sys
 import traceback
 
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
 
 from deeptutor.agents.question import AgentCoordinator
 from deeptutor.api.utils.log_interceptor import LogInterceptor
@@ -19,6 +19,7 @@ from deeptutor.services.settings.interface_settings import get_ui_language
 from deeptutor.tools.question import mimic_exam_questions
 from deeptutor.utils.document_validator import DocumentValidator
 from deeptutor.utils.error_utils import format_exception_message
+from meridian.platform.auth.dependencies import get_current_user, get_ws_user
 
 # Setup module logger with unified logging system (from config)
 config = load_config_with_main("main.yaml", PROJECT_ROOT)
@@ -26,6 +27,7 @@ log_dir = config.get("paths", {}).get("user_log_dir") or config.get("logging", {
 logger = get_logger("QuestionAPI", log_dir=log_dir)
 
 router = APIRouter()
+_secure = APIRouter(dependencies=[Depends(get_current_user)])
 
 # Output directory for mimic mode - use agent/question/mimic_papers
 _path_service = get_path_service()
@@ -33,7 +35,7 @@ MIMIC_OUTPUT_DIR = _path_service.get_question_dir() / "mimic_papers"
 
 
 @router.websocket("/mimic")
-async def websocket_mimic_generate(websocket: WebSocket):
+async def websocket_mimic_generate(websocket: WebSocket, user: dict = Depends(get_ws_user)):
     """
     WebSocket endpoint for mimic exam paper question generation.
 
@@ -322,7 +324,7 @@ async def websocket_mimic_generate(websocket: WebSocket):
 
 
 @router.websocket("/generate")
-async def websocket_question_generate(websocket: WebSocket):
+async def websocket_question_generate(websocket: WebSocket, user: dict = Depends(get_ws_user)):
     await websocket.accept()
 
     # Get task ID manager
@@ -524,3 +526,8 @@ async def websocket_question_generate(websocket: WebSocket):
     except Exception as e:
         error_msg = format_exception_message(e)
         logger.error(f"WebSocket error: {error_msg}")
+
+
+# All non-websocket routes above require authentication; websocket routes
+# authenticate individually via get_ws_user (see each handler).
+router.include_router(_secure)

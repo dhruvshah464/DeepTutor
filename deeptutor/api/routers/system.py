@@ -6,7 +6,7 @@ Manages system status checks and model connection tests
 from datetime import datetime
 import time
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
 from deeptutor.services.config import resolve_search_runtime_config
@@ -14,8 +14,9 @@ from deeptutor.services.embedding import get_embedding_client, get_embedding_con
 from deeptutor.services.llm import complete as llm_complete
 from deeptutor.services.llm import get_llm_config, get_token_limit_kwargs
 from deeptutor.services.search import web_search
+from meridian.platform.auth.dependencies import get_current_user
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 class TestResponse(BaseModel):
