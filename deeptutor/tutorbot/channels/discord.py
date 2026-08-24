@@ -6,9 +6,9 @@ from pathlib import Path
 from typing import Any, Literal
 
 import httpx
+from loguru import logger
 from pydantic import Field
 import websockets
-from loguru import logger
 
 from deeptutor.tutorbot.bus.events import OutboundMessage
 from deeptutor.tutorbot.bus.queue import MessageBus

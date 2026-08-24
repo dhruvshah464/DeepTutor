@@ -5,8 +5,8 @@ from __future__ import annotations
 import asyncio
 import re
 import time
-import unicodedata
 from typing import Any, Literal
+import unicodedata
 
 from loguru import logger
 from pydantic import Field

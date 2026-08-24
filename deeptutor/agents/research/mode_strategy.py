@@ -10,8 +10,8 @@ surface warnings when the LLM drifted away from the mode contract.
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, field
+import re
 from typing import Literal
 
 ResearchMode = Literal["notes", "report", "comparison", "learning_path"]

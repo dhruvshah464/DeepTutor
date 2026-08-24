@@ -32,13 +32,12 @@ from deeptutor.knowledge.add_documents import DocumentAdder
 from deeptutor.knowledge.initializer import KnowledgeBaseInitializer
 from deeptutor.knowledge.manager import KnowledgeBaseManager
 from deeptutor.knowledge.progress_tracker import ProgressStage, ProgressTracker
+from deeptutor.logging import get_logger
+from deeptutor.services.config import PROJECT_ROOT, load_config_with_main
 from deeptutor.services.rag.components.routing import FileTypeRouter
 from deeptutor.services.rag.factory import DEFAULT_PROVIDER, has_pipeline, normalize_provider_name
 from deeptutor.utils.document_validator import DocumentValidator
 from deeptutor.utils.error_utils import format_exception_message
-
-from deeptutor.logging import get_logger
-from deeptutor.services.config import PROJECT_ROOT, load_config_with_main
 
 # Initialize logger with config
 config = load_config_with_main("main.yaml", PROJECT_ROOT)

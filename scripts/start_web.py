@@ -18,6 +18,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 def _load_runtime_deps():
     from _cli_kit import accent, banner, bold, dim, log_error, log_info, log_success, warn
+
     from deeptutor.services.config import get_env_store
 
     return accent, banner, bold, dim, log_error, log_info, log_success, warn, get_env_store

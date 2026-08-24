@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from deeptutor.tutorbot.agent.tools.base import Tool
+
 from . import board, mailbox
 
 if TYPE_CHECKING:

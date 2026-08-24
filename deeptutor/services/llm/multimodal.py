@@ -12,8 +12,8 @@ Supports:
 
 from __future__ import annotations
 
-import logging
 from dataclasses import dataclass
+import logging
 from typing import Any
 
 from .capabilities import supports_vision

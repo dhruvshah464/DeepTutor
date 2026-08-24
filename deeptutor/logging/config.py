@@ -64,7 +64,11 @@ def load_logging_config() -> LoggingConfig:
         LoggingConfig instance with loaded or default values.
     """
     try:
-        from deeptutor.services.config import PROJECT_ROOT, get_path_from_config, load_config_with_main
+        from deeptutor.services.config import (
+            PROJECT_ROOT,
+            get_path_from_config,
+            load_config_with_main,
+        )
 
         config = load_config_with_main("main.yaml", PROJECT_ROOT)
 

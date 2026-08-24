@@ -1,19 +1,19 @@
 """WeCom (Enterprise WeChat) channel implementation using wecom_aibot_sdk."""
 
 import asyncio
+from collections import OrderedDict
 import importlib.util
 import os
-from collections import OrderedDict
 from typing import Any
 
 from loguru import logger
+from pydantic import Field
 
 from deeptutor.tutorbot.bus.events import OutboundMessage
 from deeptutor.tutorbot.bus.queue import MessageBus
 from deeptutor.tutorbot.channels.base import BaseChannel
 from deeptutor.tutorbot.config.paths import get_media_dir
 from deeptutor.tutorbot.config.schema import Base
-from pydantic import Field
 
 WECOM_AVAILABLE = importlib.util.find_spec("wecom_aibot_sdk") is not None
 

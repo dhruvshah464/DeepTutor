@@ -13,12 +13,11 @@ Features:
 - Configurable session limits
 """
 
+from abc import ABC, abstractmethod
 import json
 import time
-import uuid
-from abc import ABC, abstractmethod
-from pathlib import Path
 from typing import Any
+import uuid
 
 from deeptutor.services.path_service import get_path_service
 

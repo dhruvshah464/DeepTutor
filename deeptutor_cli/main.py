@@ -1,6 +1,7 @@
 """CLI entry point for the standalone ``deeptutor-cli`` package."""
 
 from __future__ import annotations
+
 import typer
 
 from deeptutor.runtime.mode import RunMode, set_mode
@@ -73,6 +74,7 @@ def run_capability(
 ) -> None:
     """Run any capability in a single turn (agent-first entry point)."""
     from deeptutor.app import DeepTutorApp
+
     from .common import run_turn_and_render
 
     request = build_turn_request(

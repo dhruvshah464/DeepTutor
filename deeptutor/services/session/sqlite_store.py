@@ -5,14 +5,14 @@ SQLite-backed unified chat session store.
 from __future__ import annotations
 
 import asyncio
+from dataclasses import dataclass
 import json
 import os
+from pathlib import Path
 import sqlite3
 import time
-import uuid
-from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
+import uuid
 
 from deeptutor.services.path_service import get_path_service
 

@@ -5,12 +5,12 @@ from pathlib import Path
 from typing import Any
 
 from deeptutor.logging import get_logger
+from deeptutor.services.path_service import get_path_service
 from deeptutor.services.rag.factory import (
     DEFAULT_PROVIDER,
     LEGACY_PROVIDER_ALIASES,
     normalize_provider_name,
 )
-from deeptutor.services.path_service import get_path_service
 
 logger = get_logger("KBConfigService")
 

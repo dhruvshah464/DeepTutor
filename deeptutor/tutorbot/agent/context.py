@@ -1,11 +1,11 @@
 """Context builder for assembling agent prompts."""
 
 import base64
+from datetime import datetime
 import mimetypes
+from pathlib import Path
 import platform
 import time
-from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from deeptutor.tutorbot.agent.memory import MemoryStore

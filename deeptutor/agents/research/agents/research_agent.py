@@ -11,9 +11,9 @@ from string import Template
 from typing import Any
 
 from deeptutor.agents.base_agent import BaseAgent
+from deeptutor.agents.research.data_structures import DynamicTopicQueue, TopicBlock
 from deeptutor.core.trace import build_trace_metadata, new_call_id
 from deeptutor.runtime.registry.tool_registry import get_tool_registry
-from deeptutor.agents.research.data_structures import DynamicTopicQueue, TopicBlock
 
 from ..utils.json_utils import extract_json_from_text
 

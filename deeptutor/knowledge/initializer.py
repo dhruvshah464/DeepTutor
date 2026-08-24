@@ -12,12 +12,11 @@ from pathlib import Path
 import shutil
 from typing import Optional
 
+from deeptutor.knowledge.progress_tracker import ProgressStage, ProgressTracker
 from deeptutor.logging import get_logger
 from deeptutor.services.rag.components.routing import FileTypeRouter
 from deeptutor.services.rag.factory import DEFAULT_PROVIDER, normalize_provider_name
 from deeptutor.services.rag.service import RAGService
-
-from deeptutor.knowledge.progress_tracker import ProgressStage, ProgressTracker
 
 logger = get_logger("KnowledgeInit")
 

@@ -16,8 +16,11 @@ import sys
 
 from deeptutor.logging import get_logger
 from deeptutor.services.rag.components.routing import FileTypeRouter
-
-from deeptutor.services.rag.factory import DEFAULT_PROVIDER, LEGACY_PROVIDER_ALIASES, normalize_provider_name
+from deeptutor.services.rag.factory import (
+    DEFAULT_PROVIDER,
+    LEGACY_PROVIDER_ALIASES,
+    normalize_provider_name,
+)
 
 logger = get_logger("KnowledgeBaseManager")
 

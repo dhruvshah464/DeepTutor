@@ -8,7 +8,6 @@ for TutorBot and DeepTutor in a single database.
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 

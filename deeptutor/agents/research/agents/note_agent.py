@@ -4,7 +4,6 @@ NoteAgent - Recording Agent
 Responsible for information compression and summary generation, converting raw data returned by tools into usable knowledge summaries
 """
 
-import json
 from string import Template
 from typing import Any, Optional
 

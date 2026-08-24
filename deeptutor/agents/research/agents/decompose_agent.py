@@ -4,9 +4,8 @@ DecomposeAgent - Topic decomposition Agent
 Responsible for decomposing topics into multiple subtopics and generating overviews for each subtopic
 """
 
-from typing import Any
-
 import json
+from typing import Any
 
 from deeptutor.agents.base_agent import BaseAgent
 from deeptutor.agents.research.data_structures import ToolTrace
@@ -269,7 +268,7 @@ Generate exactly {num_subtopics} subtopics. Please ensure exactly {num_subtopics
         response = "".join(_chunks)
 
         # Parse JSON output
-        from ..utils.json_utils import ensure_json_dict, ensure_keys, extract_json_from_text
+        from ..utils.json_utils import ensure_json_dict, ensure_keys
 
         data = extract_json_from_text(response)
         try:
@@ -355,7 +354,7 @@ Dynamically generate no more than {max_subtopics} subtopics. Please carefully an
         response = "".join(_chunks)
 
         # Parse JSON output (strict validation)
-        from ..utils.json_utils import ensure_json_dict, ensure_keys, extract_json_from_text
+        from ..utils.json_utils import ensure_json_dict, ensure_keys
 
         data = extract_json_from_text(response)
         try:
@@ -427,7 +426,7 @@ Explicitly generate {num_subtopics} subtopics. Please ensure exactly {num_subtop
         response = "".join(_chunks)
 
         # Parse JSON output (strict validation)
-        from ..utils.json_utils import ensure_json_dict, ensure_keys, extract_json_from_text
+        from ..utils.json_utils import ensure_json_dict, ensure_keys
 
         data = extract_json_from_text(response)
         try:

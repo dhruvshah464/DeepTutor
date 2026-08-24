@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import asyncio
-import json
-import weakref
 from datetime import datetime
+import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
+import weakref
 
 from loguru import logger
 
-from deeptutor.tutorbot.utils.helpers import ensure_dir, estimate_message_tokens, estimate_prompt_tokens_chain
+from deeptutor.tutorbot.utils.helpers import (
+    ensure_dir,
+    estimate_message_tokens,
+    estimate_prompt_tokens_chain,
+)
 
 if TYPE_CHECKING:
     from deeptutor.tutorbot.providers.base import LLMProvider

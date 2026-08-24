@@ -7,12 +7,12 @@ endpoint (OpenAI, DeepSeek, Gemini, Moonshot, MiniMax, gateways, local, etc.).
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 import hashlib
 import secrets
 import string
-import uuid
-from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
+import uuid
 
 import json_repair
 from openai import AsyncOpenAI

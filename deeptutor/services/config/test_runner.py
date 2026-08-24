@@ -5,8 +5,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 import json
 import os
-from threading import Lock
 import threading
+from threading import Lock
 import time
 from typing import Any
 from uuid import uuid4
@@ -134,8 +134,8 @@ class ConfigTestRunner:
             run.emit("failed", str(exc))
 
     async def _test_llm(self, run: TestRun, catalog: dict[str, Any]) -> None:
-        from deeptutor.services.llm import clear_llm_config_cache, complete as llm_complete
-        from deeptutor.services.llm import get_token_limit_kwargs
+        from deeptutor.services.llm import clear_llm_config_cache, get_token_limit_kwargs
+        from deeptutor.services.llm import complete as llm_complete
         from deeptutor.services.llm.config import LLMConfig
 
         clear_llm_config_cache()

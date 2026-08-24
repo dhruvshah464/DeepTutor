@@ -23,13 +23,14 @@ from deeptutor.core.trace import (
 from deeptutor.runtime.registry.tool_registry import get_tool_registry
 from deeptutor.services.llm import (
     clean_thinking_tags,
-    complete as llm_complete,
     get_llm_config,
     get_token_limit_kwargs,
     prepare_multimodal_messages,
-    stream as llm_stream,
     supports_response_format,
     supports_tools,
+)
+from deeptutor.services.llm import (
+    stream as llm_stream,
 )
 from deeptutor.tools.builtin import BUILTIN_TOOL_NAMES
 from deeptutor.utils.json_parser import parse_json_response

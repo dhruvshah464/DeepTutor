@@ -5,12 +5,12 @@ from collections import deque
 from typing import TYPE_CHECKING, Any, Literal
 
 from loguru import logger
+from pydantic import Field
 
 from deeptutor.tutorbot.bus.events import OutboundMessage
 from deeptutor.tutorbot.bus.queue import MessageBus
 from deeptutor.tutorbot.channels.base import BaseChannel
 from deeptutor.tutorbot.config.schema import Base
-from pydantic import Field
 
 try:
     import botpy

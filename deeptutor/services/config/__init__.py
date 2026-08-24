@@ -5,16 +5,16 @@ from .knowledge_base_config import (
     KnowledgeBaseConfigService,
     get_kb_config_service,
 )
-from .model_catalog import ModelCatalogService, get_model_catalog_service
 from .loader import (
     PROJECT_ROOT,
     get_agent_params,
-    get_runtime_settings_dir,
     get_path_from_config,
+    get_runtime_settings_dir,
     load_config_with_main,
     parse_language,
     resolve_config_path,
 )
+from .model_catalog import ModelCatalogService, get_model_catalog_service
 
 __all__ = [
     "ConfigSummary",

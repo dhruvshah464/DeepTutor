@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-import uuid
 from pathlib import Path
+import uuid
 
 from deeptutor.tutorbot.agent.team._filelock import lock, unlock
 from deeptutor.tutorbot.agent.team.state import Mail

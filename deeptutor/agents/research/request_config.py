@@ -6,7 +6,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError, field_validator
 
-
 ResearchMode = Literal["notes", "report", "comparison", "learning_path"]
 ResearchDepth = Literal["quick", "standard", "deep", "manual"]
 ResearchSource = Literal["kb", "web", "papers"]

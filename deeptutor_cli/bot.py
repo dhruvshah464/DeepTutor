@@ -6,9 +6,9 @@ from __future__ import annotations
 
 import asyncio
 
-import typer
 from rich.console import Console
 from rich.table import Table
+import typer
 
 console = Console()
 

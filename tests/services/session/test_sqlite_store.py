@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import sqlite3
 from pathlib import Path
+import sqlite3
 
 from deeptutor.services.path_service import PathService
 from deeptutor.services.session.sqlite_store import SQLiteSessionStore

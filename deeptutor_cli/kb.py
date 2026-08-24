@@ -12,9 +12,9 @@ import json
 from pathlib import Path
 from typing import Optional
 
-import typer
 from rich.console import Console
 from rich.table import Table
+import typer
 
 from deeptutor.knowledge.manager import KnowledgeBaseManager
 from deeptutor.services.path_service import get_path_service

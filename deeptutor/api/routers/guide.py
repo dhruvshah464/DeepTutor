@@ -8,9 +8,9 @@ Provides session creation, learning progress management, and chat interaction.
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 
-from deeptutor.agents.notebook import NotebookAnalysisAgent
 from deeptutor.agents.base_agent import BaseAgent
 from deeptutor.agents.guide.guide_manager import GuideManager
+from deeptutor.agents.notebook import NotebookAnalysisAgent
 from deeptutor.api.utils.task_id_manager import TaskIDManager
 from deeptutor.logging import get_logger
 from deeptutor.services.config import PROJECT_ROOT, load_config_with_main

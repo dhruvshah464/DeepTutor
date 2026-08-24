@@ -10,12 +10,11 @@ from loguru import logger
 from pydantic import Field
 
 try:
-    import nh3
     from mistune import create_markdown
+    import nh3
     from nio import (
         AsyncClient,
         AsyncClientConfig,
-        ContentRepositoryConfigError,
         DownloadError,
         InviteEvent,
         JoinError,

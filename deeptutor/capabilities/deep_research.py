@@ -29,11 +29,11 @@ class DeepResearchCapability(BaseCapability):
     )
 
     async def run(self, context: UnifiedContext, stream: StreamBus) -> None:
-        from deeptutor.agents.research.research_pipeline import ResearchPipeline
         from deeptutor.agents.research.request_config import (
             build_research_runtime_config,
             validate_research_request_config,
         )
+        from deeptutor.agents.research.research_pipeline import ResearchPipeline
         from deeptutor.services.config import load_config_with_main
         from deeptutor.services.llm.config import get_llm_config
 

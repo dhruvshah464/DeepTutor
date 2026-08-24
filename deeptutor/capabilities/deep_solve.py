@@ -9,6 +9,7 @@ Wraps the existing ``MainSolver``.
 from __future__ import annotations
 
 import asyncio
+
 from deeptutor.capabilities.request_contracts import get_capability_request_schema
 from deeptutor.core.capability_protocol import BaseCapability, CapabilityManifest
 from deeptutor.core.context import UnifiedContext

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import os
-import uuid
 from collections.abc import AsyncGenerator
+import os
 from typing import Any
+import uuid
 
 from openai import AsyncOpenAI
 

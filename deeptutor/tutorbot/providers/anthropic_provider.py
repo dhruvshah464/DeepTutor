@@ -7,10 +7,10 @@ prompt caching, extended thinking, tool calls, and streaming.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable, Callable
 import re
 import secrets
 import string
-from collections.abc import Awaitable, Callable
 from typing import Any
 
 import json_repair

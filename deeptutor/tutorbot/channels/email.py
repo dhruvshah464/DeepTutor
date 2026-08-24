@@ -1,17 +1,17 @@
 """Email channel implementation using IMAP polling + SMTP replies."""
 
 import asyncio
-import html
-import imaplib
-import re
-import smtplib
-import ssl
 from datetime import date
 from email import policy
 from email.header import decode_header, make_header
 from email.message import EmailMessage
 from email.parser import BytesParser
 from email.utils import parseaddr
+import html
+import imaplib
+import re
+import smtplib
+import ssl
 from typing import Any
 
 from loguru import logger

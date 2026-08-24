@@ -7,8 +7,8 @@ View and update DeepTutor configuration.
 
 from __future__ import annotations
 
-import typer
 from rich.console import Console
+import typer
 
 console = Console()
 

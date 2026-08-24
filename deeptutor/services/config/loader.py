@@ -128,7 +128,14 @@ def load_config_with_main(config_file: str, project_root: Path | None = None) ->
         project_root = PROJECT_ROOT
 
     config_path, _ = resolve_config_path(config_file, project_root)
-    return _inject_runtime_paths(_load_yaml_file(config_path))
+    config = _load_yaml_file(config_path)
+
+    if config_file != "main.yaml":
+        main_path, _ = resolve_config_path("main.yaml", project_root)
+        main_config = _load_yaml_file(main_path)
+        config = _deep_merge(main_config, config)
+
+    return _inject_runtime_paths(config)
 
 
 async def load_config_with_main_async(
@@ -150,7 +157,14 @@ async def load_config_with_main_async(
         project_root = PROJECT_ROOT
 
     config_path, _ = resolve_config_path(config_file, project_root)
-    return _inject_runtime_paths(await _load_yaml_file_async(config_path))
+    config = await _load_yaml_file_async(config_path)
+
+    if config_file != "main.yaml":
+        main_path, _ = resolve_config_path("main.yaml", project_root)
+        main_config = await _load_yaml_file_async(main_path)
+        config = _deep_merge(main_config, config)
+
+    return _inject_runtime_paths(config)
 
 
 def get_path_from_config(config: dict[str, Any], path_key: str, default: str = None) -> str:

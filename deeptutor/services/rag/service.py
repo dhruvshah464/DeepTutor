@@ -164,8 +164,8 @@ class RAGService:
         await event_sink(event_type, message, metadata or {})
 
     def _capture_raw_logs(self, event_sink, provider: str):
-        from contextlib import ExitStack, contextmanager
         import asyncio
+        from contextlib import ExitStack, contextmanager
 
         @contextmanager
         def _manager():
@@ -270,7 +270,11 @@ class RAGService:
                 f"Context:\n{context[:2000]}"
             )
             raw = await complete(prompt, system_prompt="You are a search query generator.")
-            lines = [l.strip().lstrip("0123456789.-) ") for l in raw.strip().split("\n") if l.strip()]
+            lines = [
+                line.strip().lstrip("0123456789.-) ")
+                for line in raw.strip().split("\n")
+                if line.strip()
+            ]
             return lines[:n] if lines else [context[:200]]
         except Exception:
             return [context[:200]]

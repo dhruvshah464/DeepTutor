@@ -2,9 +2,9 @@
 
 import json
 import os
+from pathlib import Path
 import re
 import shutil
-from pathlib import Path
 
 # Default builtin skills directory (relative to this file)
 BUILTIN_SKILLS_DIR = Path(__file__).parent.parent / "skills"

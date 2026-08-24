@@ -10,17 +10,18 @@ External interface (preserved for API compatibility):
 from __future__ import annotations
 
 import asyncio
-import os
-import traceback
 from datetime import datetime
+import os
 from pathlib import Path
+import traceback
 from typing import Any
 
 import yaml
 
+from deeptutor.core.trace import derive_trace_metadata, new_call_id
+
 from ...services.config import parse_language
 from ...services.path_service import get_path_service
-from deeptutor.core.trace import derive_trace_metadata, new_call_id
 from .agents import PlannerAgent, SolverAgent, WriterAgent
 from .memory import Scratchpad, Source
 from .tool_runtime import SolveToolRuntime

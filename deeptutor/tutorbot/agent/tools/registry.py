@@ -84,7 +84,12 @@ def build_base_tools(
     restrict_to_workspace: bool = False,
 ) -> ToolRegistry:
     """Build a ToolRegistry pre-loaded with filesystem, shell, and web tools."""
-    from deeptutor.tutorbot.agent.tools.filesystem import EditFileTool, ListDirTool, ReadFileTool, WriteFileTool
+    from deeptutor.tutorbot.agent.tools.filesystem import (
+        EditFileTool,
+        ListDirTool,
+        ReadFileTool,
+        WriteFileTool,
+    )
     from deeptutor.tutorbot.agent.tools.shell import ExecTool
     from deeptutor.tutorbot.agent.tools.web import WebFetchTool, WebSearchTool
 

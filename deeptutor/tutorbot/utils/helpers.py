@@ -1,9 +1,9 @@
 """Utility functions for TutorBot."""
 
-import json
-import re
 from datetime import datetime
+import json
 from pathlib import Path
+import re
 from typing import Any
 
 import tiktoken

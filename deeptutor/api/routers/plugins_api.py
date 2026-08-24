@@ -18,9 +18,9 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from deeptutor.logging import ConsoleFormatter
 from deeptutor.runtime.registry.capability_registry import get_capability_registry
 from deeptutor.runtime.registry.tool_registry import get_tool_registry
-from deeptutor.logging import ConsoleFormatter
 
 logger = logging.getLogger(__name__)
 

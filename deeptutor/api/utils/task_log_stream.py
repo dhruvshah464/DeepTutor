@@ -1,10 +1,10 @@
 import asyncio
+from collections import deque
+from collections.abc import AsyncGenerator
 import contextlib
 import json
 import logging
 import threading
-from collections import deque
-from collections.abc import AsyncGenerator
 from typing import Any
 
 

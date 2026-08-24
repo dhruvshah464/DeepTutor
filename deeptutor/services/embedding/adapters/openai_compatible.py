@@ -146,7 +146,7 @@ class OpenAICompatibleEmbeddingAdapter(BaseEmbeddingAdapter):
                             f"retrying in {wait:.1f}s..."
                         )
                         await asyncio.sleep(wait)
-                        last_exc = Exception(f"HTTP 429 Too Many Requests")
+                        last_exc = Exception("HTTP 429 Too Many Requests")
                         continue
 
                     if response.status_code >= 400:

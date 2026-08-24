@@ -1,13 +1,12 @@
 """WhatsApp channel implementation using Node.js bridge."""
 
 import asyncio
+from collections import OrderedDict
 import json
 import mimetypes
-from collections import OrderedDict
 from typing import Any
 
 from loguru import logger
-
 from pydantic import Field
 
 from deeptutor.tutorbot.bus.events import OutboundMessage

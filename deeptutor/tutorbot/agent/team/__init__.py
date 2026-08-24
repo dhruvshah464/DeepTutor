@@ -1,25 +1,34 @@
 from __future__ import annotations
 
 import asyncio
-import json
-import re
 from dataclasses import dataclass, field
 from datetime import datetime
+import json
 from pathlib import Path
-from typing import Any
+import re
+from typing import TYPE_CHECKING, Any
 
 from loguru import logger
 
-from . import board, mailbox
-from .state import Task, TeamState, Teammate
-from .tools import TeamWorkerTool
 from deeptutor.tutorbot.agent.tools.registry import build_base_tools
 from deeptutor.tutorbot.bus.events import OutboundMessage
 from deeptutor.tutorbot.bus.queue import MessageBus
 from deeptutor.tutorbot.config.schema import ExecToolConfig, WebSearchConfig
 from deeptutor.tutorbot.providers.base import LLMProvider
 from deeptutor.tutorbot.session.manager import Session, SessionManager
-from deeptutor.tutorbot.utils.helpers import ensure_dir, parse_json_from_llm, safe_filename, timestamp
+from deeptutor.tutorbot.utils.helpers import (
+    ensure_dir,
+    parse_json_from_llm,
+    safe_filename,
+    timestamp,
+)
+
+from . import board, mailbox
+from .state import Task, Teammate, TeamState
+from .tools import TeamWorkerTool
+
+if TYPE_CHECKING:
+    from deeptutor.tutorbot.agent.tools.registry import ToolRegistry
 
 
 @dataclass

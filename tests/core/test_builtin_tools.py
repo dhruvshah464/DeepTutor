@@ -9,8 +9,8 @@ from typing import Any
 
 import pytest
 
-from deeptutor.runtime.registry.tool_registry import ToolRegistry
 from deeptutor.core.tool_protocol import BaseTool, ToolDefinition, ToolParameter, ToolResult
+from deeptutor.runtime.registry.tool_registry import ToolRegistry
 from deeptutor.tools.builtin import (
     BrainstormTool,
     CodeExecutionTool,
@@ -24,7 +24,6 @@ from deeptutor.tools.builtin import (
 
 def _install_module(monkeypatch: pytest.MonkeyPatch, fullname: str, **attrs: Any) -> types.ModuleType:
     """Install a fake module (and missing parent packages) into sys.modules."""
-    __import__("src")
     parts = fullname.split(".")
     for idx in range(1, len(parts)):
         pkg_name = ".".join(parts[:idx])

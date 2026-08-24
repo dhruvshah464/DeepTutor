@@ -4,10 +4,10 @@ CLI memory commands for the two-file public memory system (SUMMARY/PROFILE).
 
 from __future__ import annotations
 
-import typer
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.panel import Panel
+import typer
 
 from deeptutor.services.memory import get_memory_service
 

@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 import asyncio
-import json
 from collections import deque
 from dataclasses import dataclass, field
 from datetime import datetime
+import json
 from typing import Any
 
 import httpx
 from loguru import logger
+from pydantic import Field
 
 from deeptutor.tutorbot.bus.events import OutboundMessage
 from deeptutor.tutorbot.bus.queue import MessageBus
 from deeptutor.tutorbot.channels.base import BaseChannel
 from deeptutor.tutorbot.config.paths import get_runtime_subdir
 from deeptutor.tutorbot.config.schema import Base
-from pydantic import Field
 
 try:
     import socketio

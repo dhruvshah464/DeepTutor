@@ -4,8 +4,8 @@ Unified session history API.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from deeptutor.services.session import get_sqlite_session_store
 

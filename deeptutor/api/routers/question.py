@@ -487,6 +487,7 @@ async def websocket_question_generate(websocket: WebSocket):
             # Log additional context if available
             try:
                 if "result" in locals():
+                    result = locals()["result"]  # noqa: F821 - guarded by the locals() check above
                     logger.error(
                         f"Result type: {type(result)}, result keys: {result.keys() if isinstance(result, dict) else 'N/A'}"
                     )
