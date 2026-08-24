@@ -1,11 +1,14 @@
-Contributing to DeepTutor 🚀
-Thank you for your interest in contributing to DeepTutor! We are committed to building a smooth and robust intelligent learning companion, and we welcome developers of all skill levels to join us.
-Join our community for discussion, support, and collaboration:
-<p align="center">
-<a href="https://discord.gg/eRsjPgMU4t"><img src="https://img.shields.io/badge/Discord-Join_Community-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>&nbsp;
-<a href="https://github.com/HKUDS/DeepTutor/issues/78"><img src="https://img.shields.io/badge/WeChat-Join_Group-07C160?style=for-the-badge&logo=wechat&logoColor=white" alt="WeChat"></a>&nbsp;
-<a href="./Communication.md"><img src="https://img.shields.io/badge/Feishu-Join_Group-00D4AA?style=for-the-badge&logo=feishu&logoColor=white" alt="Feishu"></a>
-</p>
+Contributing to Meridian 🚀
+Thank you for your interest in contributing! Meridian is built on top of the
+open-source [DeepTutor](https://github.com/HKUDS/DeepTutor) engine (HKUDS,
+Apache 2.0) — see [ATTRIBUTION.md](./ATTRIBUTION.md) for what is inherited
+versus original. We welcome developers of all skill levels to help build the
+`meridian/` layer (auth, tenancy, learner intelligence, curriculum,
+evaluation, observability).
+
+For questions about the underlying tutoring engine itself (not the
+Meridian-specific layer), the upstream DeepTutor community channels are the
+better fit — see [Communication.md](./Communication.md).
 
 ## Table of Contents
 - [Contribution Requirements](#️-contribution-requirements)
@@ -139,9 +142,9 @@ We follow a structured commit format to maintain a clean history:
 - `chore`: Routine tasks (updating build processes, etc).
 
 ## 💡 How to Get Started
-1. Browse our [Issues](https://github.com/HKUDS/DeepTutor/issues) for tasks labeled `good first issue`.
+1. Browse this repository's [Issues](https://github.com/dhruvshah464/DeepTutor/issues) for tasks labeled `good first issue`.
 2. Comment on the issue to let others know you're working on it.
 3. Follow the process above and submit your PR!
 
-Questions? Reach out on Discord.
-Let's build the future of AI tutoring together! 🚀
+For issues in the inherited tutoring engine itself, check whether they're
+already tracked upstream at https://github.com/HKUDS/DeepTutor/issues.

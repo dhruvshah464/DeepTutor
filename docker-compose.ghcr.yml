@@ -1,14 +1,16 @@
 # ============================================
-# DeepTutor Docker Compose — Pre-built GHCR Image
+# Meridian Docker Compose — Pre-built GHCR Image
 # ============================================
-# Run DeepTutor using the official pre-built image from GitHub Container Registry.
-# No local build required — the image is pulled automatically.
+# Run Meridian (built on the DeepTutor engine) using a pre-built image from
+# GitHub Container Registry. No local build required — the image is pulled
+# automatically, once one has been published for this fork (see the image
+# field below — replace with your own GHCR repository/tag before use).
 #
 # Usage:
 #   docker compose -f docker-compose.ghcr.yml up -d
 #
 # To pin a specific version:
-#   Edit the image tag below, e.g. ghcr.io/hkuds/deeptutor:1.0.0
+#   Edit the image tag below, e.g. ghcr.io/dhruvshah464/deeptutor:1.0.0
 #
 # Prerequisites:
 #   1. Copy .env.example to .env and fill in your API keys
@@ -33,7 +35,7 @@
 
 services:
   deeptutor:
-    image: ghcr.io/hkuds/deeptutor:latest
+    image: ghcr.io/dhruvshah464/deeptutor:latest
     container_name: deeptutor
     restart: unless-stopped
     ports:

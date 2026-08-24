@@ -32,9 +32,9 @@ Our vision for DeepTutor's future development.
 
 Have a feature idea? We'd love to hear it!
 
-- Open a [Feature Request](https://github.com/HKUDS/DeepTutor/issues/new?template=feature_request.yml)
+- Open a [Feature Request](https://github.com/dhruvshah464/DeepTutor/issues/new)
 - Join the discussion on existing proposals
-- Check our [GitHub Discussions](https://github.com/HKUDS/DeepTutor/discussions)
+- Check the [upstream GitHub Discussions](https://github.com/HKUDS/DeepTutor/discussions) for engine-level topics
 
 ---
 

@@ -1,0 +1,24 @@
+Meridian
+Copyright 2026 Dhruv Shah
+
+This product includes software originally developed as part of the
+DeepTutor project (https://github.com/HKUDS/DeepTutor), created and
+maintained by HKUDS (Data Intelligence Lab @ HKU) and its contributors.
+
+DeepTutor is licensed under the Apache License, Version 2.0. A copy of
+the license is included in this repository as LICENSE.
+
+The DeepTutor engine (RAG pipelines, multi-agent solving and research
+capabilities, tutoring agents, CLI, and supporting infrastructure) makes
+up the majority of this repository's code and is inherited, largely
+unmodified in design, from that upstream project. See ATTRIBUTION.md for
+a detailed breakdown of inherited versus original code.
+
+Meridian, the agentic learning OS built on top of the DeepTutor engine
+(authentication, multi-tenancy, billing scaffolding, and the learner
+intelligence, curriculum, evaluation, and observability systems added in
+the `meridian/` package), is original work by Dhruv Shah.
+
+This NOTICE file is provided for informational purposes to satisfy
+Section 4(d) of the Apache License, Version 2.0, and does not modify the
+license terms.

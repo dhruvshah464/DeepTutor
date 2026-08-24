@@ -1,20 +1,16 @@
 # Make Contribution
 
-We hope DeepTutor could become a gift for the community. 🎁
+Meridian is built on top of the open-source [DeepTutor](https://github.com/HKUDS/DeepTutor)
+engine (HKUDS, Apache 2.0). See [ATTRIBUTION.md](https://github.com/dhruvshah464/DeepTutor/blob/main/ATTRIBUTION.md)
+for what is inherited versus original in this fork.
 
-## Join Our Community
+## Community
 
-<div class="community-links">
-  <a href="https://github.com/HKUDS/DeepTutor/issues/78" class="community-badge wechat">
-    💬 WeChat Community
-  </a>
-  <a href="https://github.com/HKUDS/DeepTutor/issues/167" class="community-badge wechat-collab">
-    🤝 WeChat Co-creators
-  </a>
-  <a href="https://discord.gg/eRsjPgMU4t" class="community-badge discord">
-    🌐 Discord
-  </a>
-</div>
+This fork does not run its own WeChat/Feishu/Discord channels. For questions
+about the underlying tutoring engine, see the upstream DeepTutor community
+channels linked from [Communication.md](https://github.com/HKUDS/DeepTutor/blob/dev/Communication.md).
+For anything specific to Meridian, open an issue on
+[this repository](https://github.com/dhruvshah464/DeepTutor/issues).
 
 ## We Welcome Contributions!
 
@@ -29,7 +25,7 @@ Whether you're fixing bugs, improving documentation, or adding new features, you
 
 ### Contribution Guidelines
 
-For detailed guidelines, see [CONTRIBUTING.md](https://github.com/HKUDS/DeepTutor/blob/dev/CONTRIBUTING.md).
+For detailed guidelines, see [CONTRIBUTING.md](https://github.com/dhruvshah464/DeepTutor/blob/main/CONTRIBUTING.md).
 
 **Key Points:**
 
@@ -54,15 +50,18 @@ pip install pre-commit && pre-commit install
 # Make changes, then submit PR to dev branch
 ```
 
-## Our Contributors
+## Contributors
 
-<a href="https://github.com/HKUDS/DeepTutor/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=HKUDS/DeepTutor&max=999" alt="Contributors" />
+<a href="https://github.com/dhruvshah464/DeepTutor/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=dhruvshah464/DeepTutor&max=999" alt="Contributors" />
 </a>
+
+This fork's own contributor graph is above. Full credit for the underlying
+engine goes to the [upstream DeepTutor contributors](https://github.com/HKUDS/DeepTutor/graphs/contributors).
 
 ---
 
-Thank you for your interest in contributing to DeepTutor! 🚀
+Thank you for your interest in contributing! 🚀
 
 <style>
 .community-links {

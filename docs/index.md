@@ -14,7 +14,7 @@ hero:
       link: /guide/pre-config
     - theme: alt
       text: GitHub
-      link: https://github.com/HKUDS/DeepTutor
+      link: https://github.com/dhruvshah464/DeepTutor
 
 features:
   - icon: 📚

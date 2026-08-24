@@ -1,5 +1,11 @@
-We provide QR codes for joining the HKUDS discussion groups on WeChat and Feishu.
+This fork (Meridian, built on DeepTutor) does not maintain separate WeChat/Feishu
+discussion groups. Those channels belong to the upstream DeepTutor project
+(HKUDS) and are the right place for questions about the underlying tutoring
+engine (RAG, multi-agent solving, research pipelines):
 
-You can join by scanning the QR codes below:
+- Upstream repository: https://github.com/HKUDS/DeepTutor
+- Upstream community QR codes: https://github.com/HKUDS/DeepTutor/blob/dev/Communication.md
 
-<img src="https://github.com/HKUDS/.github/blob/main/profile/QR.png" alt="WeChat QR Code" width="400"/>
+For anything specific to Meridian (the `meridian/` package — auth, tenancy,
+billing, learner intelligence, curriculum, evaluation, observability), open an
+issue on this repository instead.
