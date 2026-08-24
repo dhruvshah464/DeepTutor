@@ -1,12 +1,11 @@
 from dotenv import load_dotenv
+
 load_dotenv()  # Load .env before any config is initialized
 
-import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
+import logging
 
-from fastapi import FastAPI
-from fastapi import HTTPException
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -88,7 +87,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize SaaS database
     try:
-        from deeptutor.database.engine import init_db
+        from meridian.persistence.engine import init_db
         await init_db()
         logger.info("Database initialized")
     except Exception as e:
@@ -96,7 +95,7 @@ async def lifespan(app: FastAPI):
 
     # Seed default data (plans, etc.)
     try:
-        from deeptutor.database.seed import seed_plans
+        from meridian.persistence.seed import seed_plans
         await seed_plans()
         logger.info("Default data seeded")
     except Exception as e:
@@ -155,7 +154,7 @@ async def lifespan(app: FastAPI):
 
     # Dispose database engine
     try:
-        from deeptutor.database.engine import dispose_engine
+        from meridian.persistence.engine import dispose_engine
         await dispose_engine()
         logger.info("Database engine disposed")
     except Exception as e:
@@ -202,8 +201,8 @@ app.add_middleware(
 
 # Security middleware (rate limiting + security headers)
 try:
-    from deeptutor.security.rate_limiter import RateLimitMiddleware
-    from deeptutor.security.headers import SecurityHeadersMiddleware
+    from meridian.platform.security.headers import SecurityHeadersMiddleware
+    from meridian.platform.security.rate_limiter import RateLimitMiddleware
     app.add_middleware(RateLimitMiddleware)
     app.add_middleware(SecurityHeadersMiddleware)
     logger.info("Security middleware loaded (rate limiter + headers)")
@@ -253,8 +252,9 @@ from deeptutor.api.routers import (
     vision_solver,
 )
 
-# SaaS routers
-from deeptutor.api.routers import (
+# SaaS routers — original Meridian code, kept physically separate from the
+# inherited deeptutor/ engine (see ARCHITECTURE.md)
+from meridian.api import (
     admin,
     analytics,
     auth,
