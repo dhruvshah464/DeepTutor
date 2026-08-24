@@ -34,15 +34,33 @@ def _build_messages(
 
 
 def _setup_provider_env(provider_name: str, api_key: str | None, api_base: str | None) -> None:
+    """Set provider credential/config env vars some SDKs read as a fallback.
+
+    Was ``os.environ.setdefault(...)``: once any request set a provider's
+    env var, it stuck for the lifetime of the process — every later request
+    for that provider silently reused the *first* caller's credentials
+    (any downstream code reading the env var directly, bypassing the
+    explicit api_key this function's caller already passes to the SDK
+    client, would leak across tenants). Always overwriting instead means
+    the current request's credentials are always the ones in effect at the
+    point of the call.
+
+    This does not fully close the race under concurrency — os.environ is
+    still process-global, so two requests for the same provider truly
+    in flight at once can still interleave — but nothing here reads these
+    env vars mid-request; they're set synchronously immediately before the
+    SDK client is constructed with its own explicit api_key, so the window
+    is effectively just this function's own callers.
+    """
     spec = find_by_name(provider_name)
     if not spec or not api_key:
         return
     if spec.env_key:
-        os.environ.setdefault(spec.env_key, api_key)
+        os.environ[spec.env_key] = api_key
     effective_base = api_base or spec.default_api_base
     for env_name, env_val in spec.env_extras:
         resolved = env_val.replace("{api_key}", api_key).replace("{api_base}", effective_base or "")
-        os.environ.setdefault(env_name, resolved)
+        os.environ[env_name] = resolved
 
 
 def _resolve_model_and_base(
