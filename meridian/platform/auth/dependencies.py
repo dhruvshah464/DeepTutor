@@ -116,6 +116,27 @@ def require_role(*allowed_roles: str):
     return _check
 
 
+async def require_tenant(user: Dict[str, Any] = Depends(get_current_user)) -> str:
+    """
+    Dependency: require the current user to belong to an organization, and
+    return its ``org_id``.
+
+    Use this on any endpoint whose data must be filtered by ``TenantMixin.org_id``
+    (e.g. an org-scoped analytics or knowledge-base listing) — it is the
+    counterpart to the per-user ``user["sub"]`` filtering already applied
+    throughout meridian/api/learning.py and analytics.py. Raises 403 for a
+    user with no org membership rather than silently returning unscoped
+    (cross-tenant) data.
+    """
+    org_id = user.get("org_id")
+    if not org_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This endpoint requires organization membership",
+        )
+    return org_id
+
+
 async def get_ws_user(token: Optional[str] = Query(default=None, alias="token")) -> Dict[str, Any]:
     """
     Authenticate a WebSocket connection via token query parameter.

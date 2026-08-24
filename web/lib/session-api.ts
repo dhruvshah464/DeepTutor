@@ -1,5 +1,6 @@
 import type { StreamEvent } from "@/lib/unified-ws";
 import { apiUrl } from "@/lib/api";
+import { authHeaders } from "@/lib/auth";
 import { invalidateClientCache, withClientCache } from "@/lib/client-cache";
 
 export interface SessionMessage {
@@ -95,6 +96,7 @@ export async function listSessions(
     async () => {
       const response = await fetch(apiUrl(`/api/v1/sessions?limit=${limit}&offset=${offset}`), {
         cache: "no-store",
+        headers: authHeaders(),
       });
       const data = await expectJson<{ sessions: SessionSummary[] }>(response);
       return data.sessions ?? [];
@@ -109,6 +111,7 @@ export async function listSessions(
 export async function getSession(sessionId: string): Promise<SessionDetail> {
   const response = await fetch(apiUrl(`/api/v1/sessions/${sessionId}`), {
     cache: "no-store",
+    headers: authHeaders(),
   });
   return expectJson<SessionDetail>(response);
 }
@@ -116,7 +119,7 @@ export async function getSession(sessionId: string): Promise<SessionDetail> {
 export async function updateSessionTitle(sessionId: string, title: string): Promise<SessionDetail> {
   const response = await fetch(apiUrl(`/api/v1/sessions/${sessionId}`), {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ title }),
   });
   const data = await expectJson<{ session: SessionDetail }>(response);
@@ -127,6 +130,7 @@ export async function updateSessionTitle(sessionId: string, title: string): Prom
 export async function deleteSession(sessionId: string): Promise<void> {
   const response = await fetch(apiUrl(`/api/v1/sessions/${sessionId}`), {
     method: "DELETE",
+    headers: authHeaders(),
   });
   await expectJson<{ deleted: boolean }>(response);
   invalidateClientCache("sessions:");
@@ -138,7 +142,7 @@ export async function recordQuizResults(
 ): Promise<void> {
   const response = await fetch(apiUrl(`/api/v1/sessions/${sessionId}/quiz-results`), {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify({ answers }),
   });
   await expectJson<{ recorded: boolean }>(response);

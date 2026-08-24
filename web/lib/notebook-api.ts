@@ -1,4 +1,5 @@
 import { apiUrl } from "@/lib/api";
+import { authHeaders } from "@/lib/auth";
 import { invalidateClientCache, withClientCache } from "@/lib/client-cache";
 
 const NOTEBOOK_CACHE_PREFIX = "notebook:";
@@ -34,6 +35,7 @@ export async function listNotebooks(options?: { force?: boolean }) {
     async () => {
       const response = await fetch(apiUrl("/api/v1/notebook/list"), {
         cache: "no-store",
+        headers: authHeaders(),
       });
       const data = await response.json();
       return Array.isArray(data?.notebooks) ? data.notebooks : [];
@@ -50,6 +52,7 @@ export async function getNotebookDetail(notebookId: string, options?: { force?: 
     async () => {
       const response = await fetch(apiUrl(`/api/v1/notebook/${notebookId}`), {
         cache: "no-store",
+        headers: authHeaders(),
       });
       return response.json() as Promise<NotebookDetail>;
     },

@@ -236,7 +236,11 @@ async def get_quiz(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Get quiz details with questions."""
-    quiz = (await db.execute(select(Quiz).where(Quiz.id == quiz_id))).scalar_one_or_none()
+    quiz = (
+        await db.execute(
+            select(Quiz).where(Quiz.id == quiz_id, Quiz.user_id == user["sub"])
+        )
+    ).scalar_one_or_none()
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
@@ -260,7 +264,11 @@ async def submit_quiz(
     db: AsyncSession = Depends(get_db_session),
 ):
     """Submit quiz answers and get results."""
-    quiz = (await db.execute(select(Quiz).where(Quiz.id == quiz_id))).scalar_one_or_none()
+    quiz = (
+        await db.execute(
+            select(Quiz).where(Quiz.id == quiz_id, Quiz.user_id == user["sub"])
+        )
+    ).scalar_one_or_none()
     if not quiz:
         raise HTTPException(status_code=404, detail="Quiz not found")
 
@@ -365,7 +373,11 @@ async def add_flashcard(
 ):
     """Add a flashcard to a deck."""
     deck = (
-        await db.execute(select(FlashcardDeck).where(FlashcardDeck.id == deck_id))
+        await db.execute(
+            select(FlashcardDeck).where(
+                FlashcardDeck.id == deck_id, FlashcardDeck.user_id == user["sub"]
+            )
+        )
     ).scalar_one_or_none()
     if not deck:
         raise HTTPException(status_code=404, detail="Deck not found")

@@ -6,6 +6,7 @@
  */
 
 import { wsUrl } from "./api";
+import { getAccessToken } from "./auth";
 
 // ---- StreamEvent types (mirror Python StreamEventType) ----
 
@@ -121,7 +122,9 @@ export class UnifiedWSClient {
   }
 
   private _doConnect(): void {
-    const url = wsUrl("/api/v1/ws");
+    const base = wsUrl("/api/v1/ws");
+    const token = getAccessToken();
+    const url = token ? `${base}?token=${encodeURIComponent(token)}` : base;
     this.ws = new WebSocket(url);
 
     this._connectPromise = new Promise<void>((resolve, reject) => {

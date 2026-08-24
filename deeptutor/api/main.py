@@ -4,6 +4,7 @@ load_dotenv()  # Load .env before any config is initialized
 
 from contextlib import asynccontextmanager
 import logging
+import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -190,10 +191,30 @@ async def selective_access_log(request, call_next):
     return response
 
 
-# Configure CORS
+# Configure CORS.
+# allow_origins=["*"] combined with allow_credentials=True is a known
+# misconfiguration: Starlette's CORSMiddleware echoes back whatever Origin
+# the request sent, effectively allowing any site to make credentialed
+# (cookie/Authorization-bearing) requests. CORS_ORIGINS is a comma-separated
+# allowlist; it must be set explicitly for any deployment other than local
+# dev, where it defaults to the frontend's own dev server ports.
+_cors_origins_env = os.getenv("CORS_ORIGINS", "").strip()
+if _cors_origins_env:
+    _cors_origins = [origin.strip() for origin in _cors_origins_env.split(",") if origin.strip()]
+else:
+    _frontend_port = os.getenv("FRONTEND_PORT", "3782")
+    _cors_origins = [
+        f"http://localhost:{_frontend_port}",
+        f"http://127.0.0.1:{_frontend_port}",
+    ]
+    logger.warning(
+        f"CORS_ORIGINS not set; defaulting to local dev origins {_cors_origins}. "
+        "Set CORS_ORIGINS explicitly in any non-local deployment."
+    )
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, replace with specific frontend origin
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

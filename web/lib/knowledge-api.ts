@@ -1,4 +1,5 @@
 import { apiUrl } from "@/lib/api";
+import { authHeaders } from "@/lib/auth";
 import { invalidateClientCache, withClientCache } from "@/lib/client-cache";
 
 const KNOWLEDGE_CACHE_PREFIX = "knowledge:";
@@ -23,6 +24,7 @@ export async function listKnowledgeBases(options?: { force?: boolean }) {
     async () => {
       const response = await fetch(apiUrl("/api/v1/knowledge/list"), {
         cache: "no-store",
+        headers: authHeaders(),
       });
       const data = await response.json();
       return Array.isArray(data)
@@ -43,6 +45,7 @@ export async function listRagProviders(options?: { force?: boolean }) {
     async () => {
       const response = await fetch(apiUrl("/api/v1/knowledge/rag-providers"), {
         cache: "no-store",
+        headers: authHeaders(),
       });
       const data = await response.json();
       return Array.isArray(data?.providers) ? data.providers : [];

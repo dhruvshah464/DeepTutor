@@ -66,14 +66,31 @@ export function getRefreshToken(): string | null {
   return localStorage.getItem(REFRESH_KEY);
 }
 
+// Presence-only cookie (no token value) so the Next.js middleware route
+// guard can redirect logged-out visitors away from SaaS pages before the
+// page renders. Middleware runs at the edge and cannot read localStorage,
+// which is where the real bearer tokens live and stay — this cookie never
+// carries the token itself, only a boolean "a session exists" flag.
+const SESSION_COOKIE = "dt_session";
+
+function setSessionCookie(): void {
+  document.cookie = `${SESSION_COOKIE}=1; path=/; max-age=2592000; SameSite=Lax`;
+}
+
+function clearSessionCookie(): void {
+  document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
+}
+
 export function setTokens(tokens: AuthTokens): void {
   localStorage.setItem(TOKEN_KEY, tokens.access_token);
   localStorage.setItem(REFRESH_KEY, tokens.refresh_token);
+  setSessionCookie();
 }
 
 export function clearTokens(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(REFRESH_KEY);
+  clearSessionCookie();
 }
 
 export function isAuthenticated(): boolean {

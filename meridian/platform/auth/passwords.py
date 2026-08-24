@@ -2,8 +2,13 @@
 Password Hashing
 =================
 
-Secure password hashing using bcrypt via passlib.
-Handles bcrypt version compatibility issues automatically.
+Secure password hashing using bcrypt via passlib. ``passlib[bcrypt]`` is a
+declared dependency (pyproject.toml, requirements/server.txt) — its absence
+means a broken install, not a condition to silently work around. Previously
+this module fell back to a single-round salted SHA-256 scheme on any
+passlib/bcrypt import failure, which meant a clean install missing that
+dependency would silently issue weak password hashes with no error. It now
+raises at import time instead.
 """
 
 from __future__ import annotations
@@ -14,44 +19,34 @@ logger = logging.getLogger(__name__)
 
 try:
     from passlib.context import CryptContext
-    _pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    _HAS_PASSLIB = True
-except Exception:
-    _HAS_PASSLIB = False
-    logger.warning("passlib/bcrypt not available, using hashlib fallback")
+except Exception as exc:  # pragma: no cover - exercised only on a broken install
+    raise ImportError(
+        "passlib[bcrypt] is required for password hashing but is not installed "
+        "or failed to import. Install it with `pip install 'passlib[bcrypt]'` "
+        "(declared in pyproject.toml and requirements/server.txt) — do not "
+        "silently fall back to a weaker hashing scheme."
+    ) from exc
+
+_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def hash_password(password: str) -> str:
-    """Hash a plaintext password."""
-    if _HAS_PASSLIB:
-        try:
-            return _pwd_context.hash(password)
-        except Exception:
-            pass
-    # Fallback: SHA-256 with salt (not as secure as bcrypt, but functional)
-    import hashlib
-    import secrets
-    salt = secrets.token_hex(16)
-    hashed = hashlib.sha256((salt + password).encode()).hexdigest()
-    return f"sha256${salt}${hashed}"
+    """Hash a plaintext password with bcrypt."""
+    return _pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a plaintext password against a hash."""
+    """Verify a plaintext password against a bcrypt hash."""
     if hashed_password.startswith("sha256$"):
-        # Fallback hash
-        import hashlib
-        parts = hashed_password.split("$")
-        if len(parts) != 3:
-            return False
-        salt = parts[1]
-        expected = parts[2]
-        return hashlib.sha256((salt + plain_password).encode()).hexdigest() == expected
-
-    if _HAS_PASSLIB:
-        try:
-            return _pwd_context.verify(plain_password, hashed_password)
-        except Exception:
-            return False
-
-    return False
+        # Reject legacy fallback hashes explicitly rather than silently
+        # failing verification with no explanation — these can only exist
+        # from installs that predate this module raising on missing bcrypt.
+        logger.error(
+            "Refusing to verify a legacy sha256$ password hash; the user "
+            "must reset their password."
+        )
+        return False
+    try:
+        return _pwd_context.verify(plain_password, hashed_password)
+    except Exception:
+        return False
