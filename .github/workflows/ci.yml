@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    name: Lint (ruff)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff
+
+      - name: Run ruff check
+        run: ruff check .
+
+  pytest:
+    name: Pytest (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('requirements/dev.txt', 'requirements/server.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/dev.txt -r requirements/server.txt
+          pip install -e .
+
+      - name: Create minimal runtime config
+        run: |
+          python -c "from deeptutor.services.setup import init_user_directories; init_user_directories()"
+
+      - name: Run pytest
+        run: |
+          pytest -q --import-mode=importlib
+
+  meridian-import-check:
+    name: Meridian import check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/server.txt
+          pip install -e .
+
+      - name: Verify meridian/ only imports deeptutor.* via meridian.bridge
+        run: |
+          python -c "
+          import ast, pathlib, sys
+
+          violations = []
+          for path in pathlib.Path('meridian').rglob('*.py'):
+              if path.parts[:2] == ('meridian', 'bridge'):
+                  continue
+              tree = ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
+              for node in ast.walk(tree):
+                  if isinstance(node, ast.ImportFrom) and node.module and node.module.startswith('deeptutor'):
+                      violations.append(f'{path}: from {node.module} import ...')
+                  if isinstance(node, ast.Import):
+                      for alias in node.names:
+                          if alias.name.startswith('deeptutor'):
+                              violations.append(f'{path}: import {alias.name}')
+
+          if violations:
+              print('meridian/ modules outside meridian/bridge import deeptutor.* directly:')
+              for v in violations:
+                  print(f'  {v}')
+              sys.exit(1)
+          print('OK: meridian/ only reaches deeptutor.* through meridian/bridge')
+          "
+
+      - name: Import meridian and deeptutor.api.main
+        run: |
+          python -c "import meridian; import meridian.platform.auth; import meridian.persistence; import meridian.api; print('meridian OK')"
+          python -c "import deeptutor.api.main; print('deeptutor.api.main OK')"
