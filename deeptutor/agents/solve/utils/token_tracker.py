@@ -9,6 +9,8 @@ from datetime import datetime
 import json
 from typing import Any
 
+from meridian.evaluation.model_metadata import MODEL_CATALOG
+
 # Try importing tiktoken (if available)
 try:
     import tiktoken
@@ -21,29 +23,15 @@ except ImportError:
 LITELLM_AVAILABLE = False
 
 
-# Model pricing table (price per 1K tokens, unit: USD)
-# Data source: Official pricing from various vendors (November 2024)
+# Model pricing table (price per 1K tokens, unit: USD). Sourced from the
+# consolidated meridian.evaluation.model_metadata catalog — this used to
+# be one of three separate, diverging copies of this dict (see that
+# module's docstring). Kept as a derived dict rather than deleted:
+# get_model_pricing() below and other code in this module reference
+# MODEL_PRICING by name.
 MODEL_PRICING = {
-    # OpenAI GPT Series
-    "gpt-4o": {"input": 0.0025, "output": 0.010},
-    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
-    "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-    "gpt-4": {"input": 0.03, "output": 0.06},
-    "gpt-4-32k": {"input": 0.06, "output": 0.12},
-    "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
-    "gpt-3.5-turbo-16k": {"input": 0.003, "output": 0.004},
-    # DeepSeek Series
-    "deepseek-chat": {"input": 0.00014, "output": 0.00028},
-    "deepseek-coder": {"input": 0.00014, "output": 0.00028},
-    # Anthropic Claude Series
-    "claude-3-opus": {"input": 0.015, "output": 0.075},
-    "claude-3-sonnet": {"input": 0.003, "output": 0.015},
-    "claude-3-haiku": {"input": 0.00025, "output": 0.00125},
-    "claude-3-5-sonnet": {"input": 0.003, "output": 0.015},
-    # Google Gemini Series
-    "gemini-pro": {"input": 0.0005, "output": 0.0015},
-    "gemini-1.5-pro": {"input": 0.00125, "output": 0.005},
-    "gemini-1.5-flash": {"input": 0.000075, "output": 0.0003},
+    name: {"input": m.input_price_per_1k, "output": m.output_price_per_1k}
+    for name, m in MODEL_CATALOG.items()
 }
 
 

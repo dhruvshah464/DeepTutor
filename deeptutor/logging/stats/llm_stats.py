@@ -25,6 +25,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Optional
 
+from meridian.evaluation.model_metadata import MODEL_CATALOG, get_pricing
+
 if TYPE_CHECKING:
     from ..logger import Logger
 
@@ -35,27 +37,15 @@ try:
 except Exception:  # pragma: no cover - tiktoken is a declared dependency
     _ENCODING = None
 
-# Model pricing per 1K tokens (USD)
+# Model pricing per 1K tokens (USD). Sourced from meridian.evaluation.model_metadata
+# (the consolidated catalog — see its module docstring for why this used to
+# be three separate, diverging copies of this dict). MODEL_PRICING is kept
+# as a derived dict, not deleted, since deeptutor/logging/__init__.py
+# re-exports it as a public symbol other code may import directly.
 MODEL_PRICING = {
-    "gpt-4o": {"input": 0.0025, "output": 0.010},
-    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
-    "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-    "gpt-4": {"input": 0.03, "output": 0.06},
-    "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
-    "deepseek-chat": {"input": 0.00014, "output": 0.00028},
-    "claude-3-5-sonnet": {"input": 0.003, "output": 0.015},
-    "claude-3-opus": {"input": 0.015, "output": 0.075},
-    "claude-3-haiku": {"input": 0.00025, "output": 0.00125},
+    name: {"input": m.input_price_per_1k, "output": m.output_price_per_1k}
+    for name, m in MODEL_CATALOG.items()
 }
-
-
-def get_pricing(model: str) -> dict[str, float]:
-    """Get pricing for a model (fuzzy match)."""
-    model_lower = model.lower()
-    for key, pricing in MODEL_PRICING.items():
-        if key in model_lower or model_lower in key:
-            return pricing
-    return MODEL_PRICING.get("gpt-4o-mini", {"input": 0.00015, "output": 0.0006})
 
 
 def estimate_tokens(text: str) -> int:

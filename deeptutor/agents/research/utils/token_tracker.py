@@ -9,6 +9,8 @@ from datetime import datetime
 import json
 from typing import Any
 
+from meridian.evaluation.model_metadata import MODEL_CATALOG
+
 # Try importing tiktoken (if available)
 try:
     import tiktoken  # type: ignore
@@ -20,15 +22,14 @@ except ImportError:
 
 LITELLM_AVAILABLE = False
 
-# Model pricing table (USD per 1K tokens)
+# Model pricing table (USD per 1K tokens). Sourced from the consolidated
+# meridian.evaluation.model_metadata catalog — this used to be one of
+# three separate, diverging copies of this dict (see that module's
+# docstring). Kept as a derived dict rather than deleted: get_model_pricing()
+# below and other code in this module reference MODEL_PRICING by name.
 MODEL_PRICING = {
-    "gpt-4o": {"input": 0.0025, "output": 0.010},
-    "gpt-4o-mini": {"input": 0.00015, "output": 0.0006},
-    "gpt-4-turbo": {"input": 0.01, "output": 0.03},
-    "gpt-4": {"input": 0.03, "output": 0.06},
-    "gpt-3.5-turbo": {"input": 0.0005, "output": 0.0015},
-    "deepseek-chat": {"input": 0.00014, "output": 0.00028},
-    "deepseek-coder": {"input": 0.00014, "output": 0.00028},
+    name: {"input": m.input_price_per_1k, "output": m.output_price_per_1k}
+    for name, m in MODEL_CATALOG.items()
 }
 
 
