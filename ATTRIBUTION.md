@@ -75,9 +75,66 @@ work:
   silently fell back to unsalted-round SHA-256 password hashing.
 - A quiz-ID IDOR allowed fetching another user's quiz by guessing its id.
 
-Phase 1 of this fork's roadmap (see `ARCHITECTURE.md`) closes these gaps.
-Where a gap is still open, it is tracked as a known issue rather than
-implied fixed.
+### Phase 1 status
+
+Closed:
+
+- All 20 previously-unauthenticated routers now require `get_current_user`
+  (pure-HTTP routers at the router level; routers mixing HTTP with legacy
+  per-feature WebSocket endpoints via a `_secure` sub-router, since
+  `get_current_user`'s `HTTPBearer` dependency can't resolve against a
+  `WebSocket`).
+- `unified_ws.py`'s `/ws` now requires `get_ws_user`, and
+  `subscribe_turn`/`subscribe_session`/`cancel_turn`/`resume_from` check
+  session ownership against the connected user (via the new Postgres
+  mirror) rather than accepting any `turn_id`/`session_id` a client sends.
+- `ChatSession`/`ChatMessage` are now written, via a non-fatal mirror hook
+  in `TurnRuntimeManager._persist_and_publish`
+  (`meridian/persistence/mirror.py`) — the same tap point powering the WS
+  ownership check and `max_messages_per_day` enforcement.
+  `/admin/stats`/`/analytics/learner` already queried these tables
+  correctly; they were just always empty. No route code changed — they
+  now return real numbers because the underlying tables are finally
+  populated.
+- `passlib`/`bcrypt` are declared dependencies (`bcrypt<4.1` pinned — newer
+  bcrypt removed an attribute passlib 1.7.4 probes); the module now raises
+  at import time instead of silently falling back to SHA-256.
+- The quiz-ID IDOR is fixed (`get_quiz`, `submit_quiz`, `add_flashcard` in
+  `meridian/api/learning.py` now filter by the caller's `user_id`).
+- `CORS_ORIGINS` replaces `allow_origins=["*"]` + `allow_credentials=True`.
+- `max_messages_per_day` is now enforced (`meridian/platform/quota.py`),
+  wired into the WS chat path since chat has no HTTP request to attach a
+  FastAPI dependency to.
+- `response.usage` is captured end-to-end (`deeptutor/services/llm/usage.py`,
+  a contextvars-based per-turn scope — not a process-global dict, unlike
+  `BaseAgent._shared_stats`) and lands on the mirrored `ChatMessage` rows'
+  `prompt_tokens`/`completion_tokens`, which were permanently NULL before.
+- The `words × 1.3` estimator (`llm_stats.estimate_tokens`) is replaced with
+  tiktoken's `cl100k_base` BPE encoding — it's now only a fallback for calls
+  with no real usage number, not the default.
+- Alembic has a real initial migration
+  (`meridian/persistence/migrations/versions/`), verified to render and
+  apply against Postgres via `alembic upgrade head --sql`.
+
+Still open (tracked here, not silently skipped):
+
+- The three divergent `MODEL_PRICING` tables
+  (`logging/stats/llm_stats.py`, `agents/research/utils/token_tracker.py`,
+  `agents/solve/utils/token_tracker.py`) are not yet consolidated — Phase 4
+  builds the real model metadata layer on `provider_registry.py`'s
+  `ProviderSpec` pattern, and pricing belongs there rather than as a
+  standalone merge that Phase 4 would have to redo.
+- `BaseAgent._shared_stats` (the process-global, module-keyed dict) still
+  exists for the CLI's own pretty-printed run summary; it was not deleted,
+  only bypassed for the path that matters for SaaS billing/observability
+  (real usage now flows through `deeptutor/services/llm/usage.py` instead).
+- The Stripe webhook still only logs events.
+- `require_tenant` (`meridian/platform/auth/dependencies.py`) exists but has
+  no consumer yet — every current endpoint is already correctly
+  user-scoped or role-gated; it's the documented, ready-to-use dependency
+  for the first genuinely org-scoped endpoint.
+- Redis, durable queues, SMTP, and org invite acceptance remain deferred,
+  as originally scoped for Phase 1.
 
 ## New original work beyond `d3abe6b`
 
