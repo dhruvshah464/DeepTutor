@@ -54,6 +54,30 @@ async def unified_websocket(ws: WebSocket, user: dict = Depends(get_ws_user)) ->
             return True
         return bool(org_id) and owner_org_id == org_id
 
+    async def _within_quota() -> bool:
+        """Enforce Plan.max_messages_per_day before starting a new turn.
+
+        Best-effort: a quota-check failure (e.g. Postgres unreachable) fails
+        open rather than blocking chat entirely over an unrelated outage —
+        matching the non-fatal-hook philosophy used throughout the mirror.
+        """
+        if user_id == "anonymous":
+            return True
+        try:
+            from fastapi import HTTPException
+
+            from meridian.persistence.engine import get_async_session
+            from meridian.platform.quota import check_message_quota
+
+            async with get_async_session() as db:
+                await check_message_quota(user, db)
+            return True
+        except HTTPException:
+            return False
+        except Exception:
+            logger.debug("Quota check failed; failing open", exc_info=True)
+            return True
+
     async def safe_send(data: dict[str, Any]) -> None:
         nonlocal closed
         if closed:
@@ -122,6 +146,28 @@ async def unified_websocket(ws: WebSocket, user: dict = Depends(get_ws_user)) ->
 
             if msg_type in {"message", "start_turn"}:
                 from deeptutor.services.session import get_turn_runtime_manager
+
+                if not await _within_quota():
+                    await safe_send(
+                        {
+                            "type": "error",
+                            "source": "unified_ws",
+                            "stage": "",
+                            "content": (
+                                "Daily message limit reached on your current plan. "
+                                "Upgrade your plan or try again tomorrow."
+                            ),
+                            "metadata": {
+                                "turn_terminal": True,
+                                "status": "rejected",
+                                "reason": "quota_exceeded",
+                            },
+                            "session_id": str(msg.get("session_id") or ""),
+                            "turn_id": "",
+                            "seq": 0,
+                        }
+                    )
+                    continue
 
                 runtime = get_turn_runtime_manager()
                 msg = {**msg, "user_id": user_id, "org_id": org_id}
