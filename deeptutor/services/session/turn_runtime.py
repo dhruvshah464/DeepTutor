@@ -13,6 +13,7 @@ import logging
 from typing import Any
 
 from deeptutor.core.stream import StreamEvent, StreamEventType
+from deeptutor.services.llm.usage import total_usage, usage_scope
 from deeptutor.services.path_service import get_path_service
 from deeptutor.services.session.sqlite_store import SQLiteSessionStore, get_sqlite_session_store
 
@@ -250,8 +251,19 @@ class TurnRuntimeManager:
         )
         async with self._lock:
             self._executions[turn["id"]] = execution
-            execution.task = asyncio.create_task(self._run_turn(execution))
+            execution.task = asyncio.create_task(self._run_turn_scoped(execution))
         return session, turn
+
+    async def _run_turn_scoped(self, execution: _TurnExecution) -> None:
+        """Run _run_turn inside a fresh LLM usage-accounting scope.
+
+        Every executors.py sdk_complete/sdk_stream call made while this
+        turn's task (and everything it awaits) is running records into the
+        same contextvar-scoped accumulator, which _persist_and_publish then
+        attaches to the terminal DONE event for the Postgres mirror to read.
+        """
+        with usage_scope():
+            await self._run_turn(execution)
 
     async def cancel_turn(self, turn_id: str) -> bool:
         async with self._lock:
@@ -589,8 +601,20 @@ class TurnRuntimeManager:
         execution: _TurnExecution,
         event: StreamEvent,
     ) -> dict[str, Any]:
-        if event.type == StreamEventType.DONE and not event.metadata.get("status"):
-            event.metadata = {**event.metadata, "status": "completed"}
+        if event.type == StreamEventType.DONE:
+            if not event.metadata.get("status"):
+                event.metadata = {**event.metadata, "status": "completed"}
+            if "usage" not in event.metadata:
+                usage = total_usage()
+                if usage.prompt_tokens or usage.completion_tokens:
+                    event.metadata = {
+                        **event.metadata,
+                        "usage": {
+                            "prompt_tokens": usage.prompt_tokens,
+                            "completion_tokens": usage.completion_tokens,
+                            "total_tokens": usage.total_tokens,
+                        },
+                    }
         event.session_id = execution.session_id
         event.turn_id = execution.turn_id
         payload = event.to_dict()

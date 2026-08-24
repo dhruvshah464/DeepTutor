@@ -13,6 +13,7 @@ from deeptutor.logging import get_logger
 from deeptutor.services.llm.provider_registry import find_by_name, strip_provider_prefix
 
 from .config import get_token_limit_kwargs
+from .usage import record_usage
 from .utils import extract_response_content
 
 logger = get_logger("LLMExecutors")
@@ -113,6 +114,15 @@ async def sdk_complete(
     payload.update(kwargs)
 
     response = await client.chat.completions.create(**payload)
+    usage = getattr(response, "usage", None)
+    if usage is not None:
+        record_usage(
+            model=resolved_model,
+            provider=provider_name,
+            prompt_tokens=getattr(usage, "prompt_tokens", None),
+            completion_tokens=getattr(usage, "completion_tokens", None),
+            total_tokens=getattr(usage, "total_tokens", None),
+        )
     choices = getattr(response, "choices", None) or []
     if not choices:
         return ""
@@ -165,6 +175,11 @@ async def sdk_stream(
         ),
         "temperature": temperature_val,
         "stream": True,
+        # Ask OpenAI-compatible endpoints for a final usage-only chunk.
+        # Providers that don't understand this field generally ignore it
+        # rather than erroring; the usage capture below is a no-op when a
+        # provider doesn't send one back.
+        "stream_options": {"include_usage": True},
     }
 
     token_kwargs = get_token_limit_kwargs(resolved_model, max_tokens_val)
@@ -176,6 +191,15 @@ async def sdk_stream(
 
     stream_response = await client.chat.completions.create(**payload)
     async for chunk in stream_response:
+        usage = getattr(chunk, "usage", None)
+        if usage is not None:
+            record_usage(
+                model=resolved_model,
+                provider=provider_name,
+                prompt_tokens=getattr(usage, "prompt_tokens", None),
+                completion_tokens=getattr(usage, "completion_tokens", None),
+                total_tokens=getattr(usage, "total_tokens", None),
+            )
         choices = getattr(chunk, "choices", None) or []
         if not choices:
             continue

@@ -28,6 +28,13 @@ from typing import TYPE_CHECKING, Any, Optional
 if TYPE_CHECKING:
     from ..logger import Logger
 
+try:
+    import tiktoken
+
+    _ENCODING = tiktoken.get_encoding("cl100k_base")
+except Exception:  # pragma: no cover - tiktoken is a declared dependency
+    _ENCODING = None
+
 # Model pricing per 1K tokens (USD)
 MODEL_PRICING = {
     "gpt-4o": {"input": 0.0025, "output": 0.010},
@@ -52,8 +59,25 @@ def get_pricing(model: str) -> dict[str, float]:
 
 
 def estimate_tokens(text: str) -> int:
-    """Rough estimate of tokens (1.3 tokens per word)."""
-    return int(len(text.split()) * 1.3)
+    """Estimate token count via tiktoken's cl100k_base BPE encoding.
+
+    Only used when real usage numbers aren't available (add_call's
+    prompt_tokens/completion_tokens args, populated from the API's actual
+    response.usage, are always preferred — see BaseAgent._track_tokens).
+    The previous `len(text.split()) * 1.3` word-count heuristic was
+    catastrophically wrong for CJK content this project handles: a Chinese
+    paragraph with no whitespace splits into ~1 "word" regardless of its
+    actual length. BPE tokenization doesn't depend on whitespace.
+    """
+    if not text:
+        return 0
+    if _ENCODING is not None:
+        return len(_ENCODING.encode(text))
+    # Fallback if tiktoken's encoding data can't be loaded (e.g. no network
+    # access to fetch it on first use in a sandboxed environment): a
+    # character-based estimate is still far closer for CJK text than a
+    # whitespace word count.
+    return max(1, len(text) // 3)
 
 
 @dataclass
