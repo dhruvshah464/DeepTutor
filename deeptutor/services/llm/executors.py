@@ -11,6 +11,7 @@ from openai import AsyncOpenAI
 
 from deeptutor.logging import get_logger
 from deeptutor.services.llm.provider_registry import find_by_name, strip_provider_prefix
+from deeptutor.utils.error_rate_tracker import record_provider_call
 
 from .config import get_token_limit_kwargs
 from .usage import record_usage
@@ -131,7 +132,12 @@ async def sdk_complete(
         payload["reasoning_effort"] = reasoning_effort
     payload.update(kwargs)
 
-    response = await client.chat.completions.create(**payload)
+    try:
+        response = await client.chat.completions.create(**payload)
+    except Exception:
+        record_provider_call(provider_name, success=False)
+        raise
+    record_provider_call(provider_name, success=True)
     usage = getattr(response, "usage", None)
     if usage is not None:
         record_usage(
@@ -207,29 +213,35 @@ async def sdk_stream(
         payload["reasoning_effort"] = reasoning_effort
     payload.update(kwargs)
 
-    stream_response = await client.chat.completions.create(**payload)
-    async for chunk in stream_response:
-        usage = getattr(chunk, "usage", None)
-        if usage is not None:
-            record_usage(
-                model=resolved_model,
-                provider=provider_name,
-                prompt_tokens=getattr(usage, "prompt_tokens", None),
-                completion_tokens=getattr(usage, "completion_tokens", None),
-                total_tokens=getattr(usage, "total_tokens", None),
-            )
-        choices = getattr(chunk, "choices", None) or []
-        if not choices:
-            continue
-        choice = choices[0]
-        delta = getattr(choice, "delta", None)
-        if delta is None and isinstance(choice, dict):
-            delta = choice.get("delta")
-        if delta is None:
-            continue
-        raw_content = getattr(delta, "content", None) if not isinstance(delta, dict) else delta.get("content")
-        if raw_content is None:
-            continue
-        content = extract_response_content(delta)
-        if content:
-            yield content
+    try:
+        stream_response = await client.chat.completions.create(**payload)
+        async for chunk in stream_response:
+            usage = getattr(chunk, "usage", None)
+            if usage is not None:
+                record_usage(
+                    model=resolved_model,
+                    provider=provider_name,
+                    prompt_tokens=getattr(usage, "prompt_tokens", None),
+                    completion_tokens=getattr(usage, "completion_tokens", None),
+                    total_tokens=getattr(usage, "total_tokens", None),
+                )
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+            choice = choices[0]
+            delta = getattr(choice, "delta", None)
+            if delta is None and isinstance(choice, dict):
+                delta = choice.get("delta")
+            if delta is None:
+                continue
+            raw_content = getattr(delta, "content", None) if not isinstance(delta, dict) else delta.get("content")
+            if raw_content is None:
+                continue
+            content = extract_response_content(delta)
+            if content:
+                yield content
+    except Exception:
+        record_provider_call(provider_name, success=False)
+        raise
+    else:
+        record_provider_call(provider_name, success=True)

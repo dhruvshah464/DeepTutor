@@ -74,6 +74,12 @@ class EventBus:
             cls._instance = super().__new__(cls)
         return cls._instance
 
+    # Bounded so a stalled/absent consumer can't grow this queue without
+    # limit; publish() drops (and logs) the event rather than blocking the
+    # publisher when full, matching this bus's "non-blocking event
+    # delivery" contract.
+    MAX_QUEUE_SIZE = 1000
+
     def __init__(self) -> None:
         if EventBus._initialized:
             return
@@ -81,7 +87,7 @@ class EventBus:
         self._subscribers: dict[EventType, list[EventHandler]] = {
             event_type: [] for event_type in EventType
         }
-        self._task_queue: asyncio.Queue[Event] = asyncio.Queue()
+        self._task_queue: asyncio.Queue[Event] = asyncio.Queue(maxsize=self.MAX_QUEUE_SIZE)
         self._processor_task: asyncio.Task | None = None
         self._running: bool = False
 
@@ -99,8 +105,17 @@ class EventBus:
             logger.debug("Handler unsubscribed from %s", event_type.value)
 
     async def publish(self, event: Event) -> None:
-        await self._task_queue.put(event)
-        logger.debug("Event published: %s (task_id=%s)", event.type.value, event.task_id)
+        try:
+            self._task_queue.put_nowait(event)
+            logger.debug("Event published: %s (task_id=%s)", event.type.value, event.task_id)
+        except asyncio.QueueFull:
+            logger.warning(
+                "EventBus queue full (%d), dropping event %s (task_id=%s)",
+                self.MAX_QUEUE_SIZE,
+                event.type.value,
+                event.task_id,
+            )
+            return
 
         if not self._running:
             await self.start()

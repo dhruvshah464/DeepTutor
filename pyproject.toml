@@ -54,6 +54,7 @@ dashscope = ["dashscope>=1.14.0"]
 search = ["perplexityai>=0.1.0"]
 oauth = ["oauth-cli-kit>=0.1.0; python_version >= '3.11'"]
 stripe = ["stripe>=7.0.0"]
+observability = ["opentelemetry-api>=1.20.0", "opentelemetry-sdk>=1.20.0"]
 server = [
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.24.0",

@@ -16,6 +16,8 @@ from deeptutor.core.stream import StreamEvent, StreamEventType
 from deeptutor.services.llm.usage import total_usage, usage_scope
 from deeptutor.services.path_service import get_path_service
 from deeptutor.services.session.sqlite_store import SQLiteSessionStore, get_sqlite_session_store
+from meridian.observability.export import export_span
+from meridian.observability.spans import end_span, start_span
 
 logger = logging.getLogger(__name__)
 
@@ -255,15 +257,36 @@ class TurnRuntimeManager:
         return session, turn
 
     async def _run_turn_scoped(self, execution: _TurnExecution) -> None:
-        """Run _run_turn inside a fresh LLM usage-accounting scope.
+        """Run _run_turn inside a fresh LLM usage-accounting and tracing scope.
 
         Every executors.py sdk_complete/sdk_stream call made while this
         turn's task (and everything it awaits) is running records into the
         same contextvar-scoped accumulator, which _persist_and_publish then
         attaches to the terminal DONE event for the Postgres mirror to read.
+
+        Also wraps the whole turn in one real observability span (see
+        meridian/observability/spans.py) — this is the one chokepoint every
+        turn passes through regardless of capability, so it's where a real
+        span exists for every turn today, rather than requiring each of
+        BaseAgent's ~12 capabilities to individually instrument itself.
         """
         with usage_scope():
-            await self._run_turn(execution)
+            turn_span = start_span(
+                "turn",
+                attributes={"capability": execution.capability, "turn_id": execution.turn_id},
+            )
+            try:
+                await self._run_turn(execution)
+            except Exception as exc:
+                end_span(turn_span, status="error", error=str(exc))
+                raise
+            else:
+                end_span(turn_span, status="ok")
+            finally:
+                usage = total_usage()
+                turn_span.attributes["prompt_tokens"] = usage.prompt_tokens
+                turn_span.attributes["completion_tokens"] = usage.completion_tokens
+                export_span(turn_span)
 
     async def cancel_turn(self, turn_id: str) -> bool:
         async with self._lock:

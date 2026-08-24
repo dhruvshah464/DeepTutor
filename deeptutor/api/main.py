@@ -124,9 +124,15 @@ async def lifespan(app: FastAPI):
         logger.warning(f"Failed to initialize LLM client at startup: {e}")
 
     try:
-        from deeptutor.events.event_bus import get_event_bus
+        from deeptutor.events.event_bus import EventType, get_event_bus
+        from meridian.observability.event_log import log_event
 
         event_bus = get_event_bus()
+        # Repurposes a bus that had real publishers (main_solver, the
+        # orchestrator, TutorBot) but zero subscribers — every event was
+        # constructed and silently dropped. See meridian/observability/event_log.py.
+        for event_type in EventType:
+            event_bus.subscribe(event_type, log_event)
         await event_bus.start()
         logger.info("EventBus started")
     except Exception as e:
