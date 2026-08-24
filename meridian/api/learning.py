@@ -29,6 +29,58 @@ from meridian.platform.auth.dependencies import get_current_user
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+_DIFFICULTY_TO_FLOAT = {"beginner": 0.25, "intermediate": 0.5, "advanced": 0.8}
+
+
+async def _record_quiz_answers_to_learner_twin(
+    db: AsyncSession, *, user_id: str, quiz: Quiz, questions: list[dict], answers: list[dict]
+) -> None:
+    """Best-effort: feed graded quiz answers into the learner digital twin.
+
+    Only fires when the quiz's topic resolves to a known Concept (see
+    meridian/knowledge/seed_calculus.py) — most quizzes won't, since concept
+    tagging is prototyped on one hand-authored domain rather than run over
+    arbitrary topics (see ARCHITECTURE.md's risk note on concept-tagging
+    quality). Failure here must never break quiz submission, matching the
+    non-fatal-hook pattern used by the turn-runtime Postgres mirror.
+    """
+    if not quiz.topic:
+        return
+    try:
+        from sqlalchemy import func
+
+        from meridian.learner.service import record_event
+        from meridian.persistence.models.learner import Concept
+
+        topic_slug = quiz.topic.strip().lower().replace(" ", "_")
+        concept = (
+            await db.execute(
+                select(Concept).where(
+                    (Concept.slug == topic_slug) | (func.lower(Concept.name) == quiz.topic.strip().lower())
+                )
+            )
+        ).scalar_one_or_none()
+        if concept is None:
+            return
+
+        difficulty = _DIFFICULTY_TO_FLOAT.get(quiz.difficulty, 0.5)
+        for answer in answers:
+            q_idx = answer.get("question_index", -1)
+            if not (0 <= q_idx < len(questions)):
+                continue
+            correct = answer.get("selected") == questions[q_idx].get("correct_answer")
+            await record_event(
+                db,
+                user_id=user_id,
+                concept_id=concept.id,
+                correct=correct,
+                difficulty=difficulty,
+                event_type="quiz",
+                source_turn_id=quiz.session_id,
+            )
+    except Exception:
+        logger.debug("Failed to record quiz answers to learner twin", exc_info=True)
+
 
 # ── Schemas ──
 
@@ -296,6 +348,10 @@ async def submit_quiz(
         completed_at=datetime.now(timezone.utc),
     )
     db.add(attempt)
+
+    await _record_quiz_answers_to_learner_twin(
+        db, user_id=user["sub"], quiz=quiz, questions=questions, answers=body.answers
+    )
 
     # Track progress
     progress = LearningProgress(

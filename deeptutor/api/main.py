@@ -102,6 +102,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Data seeding skipped: {e}")
 
+    # Seed the prototype calculus/ML concept DAG (meridian/learner digital twin)
+    try:
+        from meridian.knowledge.seed_calculus import seed_database as seed_calculus_dag
+        await seed_calculus_dag()
+        logger.info("Calculus concept DAG seeded")
+    except Exception as e:
+        logger.warning(f"Concept DAG seeding skipped: {e}")
+
     # Validate configuration consistency
     validate_tool_consistency()
 
@@ -281,6 +289,7 @@ from meridian.api import (
     auth,
     billing,
     health,
+    learner,
     learning,
     orgs,
 )
@@ -313,6 +322,7 @@ app.include_router(billing.router, prefix="/api/v1", tags=["billing"])
 app.include_router(admin.router, prefix="/api/v1", tags=["admin"])
 app.include_router(learning.router, prefix="/api/v1", tags=["learning"])
 app.include_router(analytics.router, prefix="/api/v1", tags=["analytics"])
+app.include_router(learner.router, prefix="/api/v1", tags=["learner"])
 app.include_router(health.router, tags=["health"])
 
 

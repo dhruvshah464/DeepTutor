@@ -9,6 +9,13 @@ from .audit import AuditLog
 from .base import Base, TenantMixin, TimestampMixin
 from .billing import Invoice, Plan, Subscription, UsageRecord
 from .knowledge import Chunk, Document, KnowledgeBaseModel
+from .learner import (
+    Concept,
+    ConceptEdge,
+    LearnerConceptState,
+    LearnerEvent,
+    Misconception,
+)
 from .learning import Flashcard, FlashcardDeck, LearningPath, LearningProgress, Quiz, QuizAttempt
 from .org import Invitation, Organization, OrgMembership
 from .session import ChatMessage, ChatSession
@@ -47,4 +54,10 @@ __all__ = [
     "QuizAttempt",
     "FlashcardDeck",
     "Flashcard",
+    # Learner digital twin
+    "Concept",
+    "ConceptEdge",
+    "Misconception",
+    "LearnerEvent",
+    "LearnerConceptState",
 ]
