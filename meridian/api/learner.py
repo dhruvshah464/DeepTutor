@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from meridian.curriculum.planner import plan as build_plan
 from meridian.knowledge.diagnosis import diagnose
 from meridian.knowledge.graph import ConceptGraph
 from meridian.learner.mastery import confidence as confidence_of
@@ -172,4 +173,51 @@ async def record_learner_event(
         "concept_id": state.concept_id,
         "mastery": round(state.alpha / (state.alpha + state.beta), 4),
         "evidence_count": state.evidence_count,
+    }
+
+
+@router.get("/learner/plan")
+async def get_study_plan(
+    target: list[str] = Query(..., description="Target concept slugs to work toward"),
+    available_hours: float = Query(default=4.0, gt=0),
+    user=Depends(get_current_user),
+    db: AsyncSession = Depends(get_db_session),
+):
+    """An ordered study schedule toward ``target`` concepts, within ``available_hours``.
+
+    Stateless: this is meridian.curriculum.planner.plan() run against the
+    learner's live mastery. "Replanning" after new evidence (e.g. a failed
+    assessment) is just calling this endpoint again — there's no separate
+    plan to invalidate.
+    """
+    graph, id_to_name, slug_to_id = await _load_graph_and_names(db)
+
+    target_ids = []
+    for slug in target:
+        concept_id = slug_to_id.get(slug)
+        if concept_id is None:
+            raise HTTPException(status_code=404, detail=f"Unknown concept: {slug}")
+        target_ids.append(concept_id)
+
+    universe: set[str] = set(target_ids)
+    for target_id in target_ids:
+        universe |= graph.prerequisites_of(target_id, transitive=True)
+    mastery_map = await get_mastery_map(db, user_id=user["sub"], concept_ids=list(universe))
+
+    result = build_plan(target_ids, graph, mastery_map.get, available_hours=available_hours)
+
+    def _render(item):
+        return {
+            "concept_id": item.concept_id,
+            "concept_name": id_to_name.get(item.concept_id, item.concept_id),
+            "mastery": round(item.mastery, 4),
+            "priority": round(item.priority, 4),
+            "hours": round(item.hours, 2),
+            "reason": item.reason,
+        }
+
+    return {
+        "scheduled": [_render(item) for item in result.scheduled],
+        "deferred": [_render(item) for item in result.deferred],
+        "total_hours": round(result.total_hours, 2),
     }
