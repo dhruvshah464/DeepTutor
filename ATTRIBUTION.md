@@ -68,7 +68,7 @@ work:
 - `max_messages_per_day` and other plan limits were seeded and returned by
   the API but never checked.
 - The Stripe webhook only logged events; it never updated subscription
-  state.
+  state. (Closed after Phase 1 — see below.)
 - `ChatSession` / `ChatMessage` rows were never written — `/admin/stats` and
   `/analytics/learner` queried permanently empty tables.
 - `passlib`/`bcrypt` were not declared as dependencies, so a clean install
@@ -115,6 +115,23 @@ Closed:
 - Alembic has a real initial migration
   (`meridian/persistence/migrations/versions/`), verified to render and
   apply against Postgres via `alembic upgrade head --sql`.
+- The Stripe webhook (`meridian/api/billing.py`) now fulfills events instead
+  of only logging them: `checkout.session.completed` creates or activates a
+  `Subscription` from the checkout session's metadata (`user_id`,
+  `plan_id`); `customer.subscription.updated`/`.deleted` sync `status`
+  (mapped from Stripe's status vocabulary), `current_period_start/end`,
+  `trial_end`, and `canceled_at`; `invoice.paid` upserts an `Invoice` row,
+  keyed on `stripe_invoice_id` so a Stripe redelivery updates the existing
+  row instead of creating a duplicate (Stripe redelivers on a timeout even
+  after a successful `200`, so this idempotency is load-bearing, not
+  defensive-for-its-own-sake). Fulfillment handlers take plain dicts rather
+  than the `stripe` SDK's typed objects, so they're unit-testable without
+  the (optional) `stripe` package installed; a fulfillment bug is caught,
+  logged, and still returns `{"received": True}` — the non-fatal hook
+  pattern used everywhere else in this fork — because failing the webhook
+  response makes Stripe retry an event that will keep failing the same way.
+  15 tests in `tests/api/test_stripe_webhook.py`, run against a real
+  in-memory DB.
 
 Still open (tracked here, not silently skipped):
 
@@ -122,7 +139,6 @@ Still open (tracked here, not silently skipped):
   exists for the CLI's own pretty-printed run summary; it was not deleted,
   only bypassed for the path that matters for SaaS billing/observability
   (real usage now flows through `deeptutor/services/llm/usage.py` instead).
-- The Stripe webhook still only logs events.
 - `require_tenant` (`meridian/platform/auth/dependencies.py`) exists but has
   no consumer yet — every current endpoint is already correctly
   user-scoped or role-gated; it's the documented, ready-to-use dependency
@@ -138,8 +154,10 @@ and `meridian/bridge/` is new original work added after the initial SaaS
 scaffolding, per the phased plan in `ARCHITECTURE.md`. These did not exist
 in DeepTutor. As of this writing: 62 files, ~7,200 lines under `meridian/`,
 with 97 tests specifically for the new Phase 2-6 modules (part of a
-294-passing/15-known-failing full suite, up from a 188-passing/27-failing
-baseline — see "Baseline test triage" below for what those 15 are).
+309-passing/15-known-failing full suite, up from a 188-passing/27-failing
+baseline — see "Baseline test triage" below for what those 15 are; the
+Stripe webhook fulfillment work below Phase 1 accounts for the other 15
+new tests beyond that 97).
 Verify with `git ls-files meridian/ | xargs wc -l` and `pytest -q`.
 
 | Module | What it is | Tests |
@@ -170,7 +188,7 @@ build environment and is not claimed as done.
 
 ### Baseline test triage
 
-The pre-existing 15 failures (of 294 collected, non-skipped tests) left
+The pre-existing 15 failures (of 324 collected, non-skipped tests) left
 after `pytest -q` are unrelated to this fork's own changes — verified by
 reproducing each in isolation before touching anything nearby:
 research request-config mapping, the provider-CLI docs contract, litellm

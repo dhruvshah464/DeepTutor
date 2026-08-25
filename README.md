@@ -58,7 +58,7 @@ references, and a per-module table of what exists and what's tested.
 
 **No performance, scale, or accuracy claims are made here that have not
 been measured in this repository.** The one class of claim reproduced on
-demand is test counts: `pytest -q` — 294 passing (up from a 188-passing
+demand is test counts: `pytest -q` — 309 passing (up from a 188-passing
 baseline), 15 known pre-existing failures unrelated to this fork's changes
 (see `ATTRIBUTION.md`'s baseline-triage section for what those are and why).
 No benchmark numbers, latency figures, or a published model-routing table

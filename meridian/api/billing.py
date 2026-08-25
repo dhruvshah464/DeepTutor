@@ -21,6 +21,7 @@ from meridian.persistence.models.billing import (
     Invoice,
     Plan,
     Subscription,
+    SubscriptionStatus,
     UsageRecord,
 )
 from meridian.platform.auth.dependencies import get_current_user
@@ -282,9 +283,164 @@ async def list_invoices(
     ]
 
 
+# ── Webhook fulfillment ──
+#
+# Handlers below operate on plain dict-like objects (anything supporting
+# .get(), which both a real stripe.StripeObject and a plain dict satisfy)
+# so they're testable with synthetic payloads without the `stripe` package
+# installed — see tests/api/test_stripe_webhook.py. Each is a best-effort
+# fulfillment step: a webhook this repo doesn't fully understand (e.g. a
+# subscription for a stripe_subscription_id we never recorded) is logged
+# and skipped rather than raising, since Stripe retries on non-2xx and
+# raising here would just retry the same unresolvable event forever.
+
+_STRIPE_STATUS_MAP = {
+    "active": SubscriptionStatus.ACTIVE.value,
+    "trialing": SubscriptionStatus.TRIALING.value,
+    "past_due": SubscriptionStatus.PAST_DUE.value,
+    "unpaid": SubscriptionStatus.PAST_DUE.value,
+    "incomplete": SubscriptionStatus.PAST_DUE.value,
+    "canceled": SubscriptionStatus.CANCELED.value,
+    "incomplete_expired": SubscriptionStatus.CANCELED.value,
+    "paused": SubscriptionStatus.PAUSED.value,
+}
+
+
+def _stripe_status_to_local(stripe_status: str) -> str:
+    return _STRIPE_STATUS_MAP.get(stripe_status, SubscriptionStatus.ACTIVE.value)
+
+
+def _unix_to_datetime(timestamp) -> datetime | None:
+    if timestamp is None:
+        return None
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc)
+
+
+async def _handle_checkout_completed(db: AsyncSession, session_obj: dict) -> None:
+    metadata = session_obj.get("metadata") or {}
+    user_id = metadata.get("user_id")
+    plan_id = metadata.get("plan_id")
+    if not user_id or not plan_id:
+        logger.warning(
+            "checkout.session.completed missing user_id/plan_id metadata (session=%s)",
+            session_obj.get("id"),
+        )
+        return
+
+    sub = (
+        await db.execute(select(Subscription).where(Subscription.user_id == user_id))
+    ).scalars().first()
+    if sub is None:
+        sub = Subscription(user_id=user_id, plan_id=plan_id)
+        db.add(sub)
+
+    sub.plan_id = plan_id
+    sub.status = SubscriptionStatus.ACTIVE.value
+    sub.stripe_customer_id = session_obj.get("customer") or sub.stripe_customer_id
+    sub.stripe_subscription_id = session_obj.get("subscription") or sub.stripe_subscription_id
+    await db.flush()
+
+
+async def _handle_subscription_updated(db: AsyncSession, sub_obj: dict) -> None:
+    stripe_subscription_id = sub_obj.get("id")
+    sub = (
+        await db.execute(
+            select(Subscription).where(Subscription.stripe_subscription_id == stripe_subscription_id)
+        )
+    ).scalar_one_or_none()
+    if sub is None:
+        logger.warning(
+            "customer.subscription.updated for unknown stripe_subscription_id=%s",
+            stripe_subscription_id,
+        )
+        return
+
+    sub.status = _stripe_status_to_local(sub_obj.get("status", ""))
+    sub.current_period_start = _unix_to_datetime(sub_obj.get("current_period_start"))
+    sub.current_period_end = _unix_to_datetime(sub_obj.get("current_period_end"))
+    sub.trial_end = _unix_to_datetime(sub_obj.get("trial_end"))
+    if sub_obj.get("canceled_at"):
+        sub.canceled_at = _unix_to_datetime(sub_obj.get("canceled_at"))
+    await db.flush()
+
+
+async def _handle_subscription_deleted(db: AsyncSession, sub_obj: dict) -> None:
+    stripe_subscription_id = sub_obj.get("id")
+    sub = (
+        await db.execute(
+            select(Subscription).where(Subscription.stripe_subscription_id == stripe_subscription_id)
+        )
+    ).scalar_one_or_none()
+    if sub is None:
+        logger.warning(
+            "customer.subscription.deleted for unknown stripe_subscription_id=%s",
+            stripe_subscription_id,
+        )
+        return
+
+    sub.status = SubscriptionStatus.CANCELED.value
+    sub.canceled_at = _unix_to_datetime(sub_obj.get("canceled_at")) or datetime.now(timezone.utc)
+    await db.flush()
+
+
+async def _handle_invoice_paid(db: AsyncSession, invoice_obj: dict) -> None:
+    stripe_invoice_id = invoice_obj.get("id")
+    stripe_subscription_id = invoice_obj.get("subscription")
+
+    local_subscription_id = None
+    user_id = None
+    if stripe_subscription_id:
+        sub = (
+            await db.execute(
+                select(Subscription).where(
+                    Subscription.stripe_subscription_id == stripe_subscription_id
+                )
+            )
+        ).scalar_one_or_none()
+        if sub is not None:
+            local_subscription_id = sub.id
+            user_id = sub.user_id
+
+    if user_id is None:
+        logger.warning(
+            "invoice.paid for unrecognized subscription=%s; skipping invoice record",
+            stripe_subscription_id,
+        )
+        return
+
+    invoice = (
+        await db.execute(select(Invoice).where(Invoice.stripe_invoice_id == stripe_invoice_id))
+    ).scalar_one_or_none()
+    if invoice is None:
+        invoice = Invoice(
+            user_id=user_id,
+            subscription_id=local_subscription_id,
+            stripe_invoice_id=stripe_invoice_id,
+        )
+        db.add(invoice)
+
+    invoice.amount = (invoice_obj.get("amount_paid") or 0) / 100.0
+    invoice.currency = (invoice_obj.get("currency") or "usd").upper()
+    invoice.status = "paid"
+    invoice.period_start = _unix_to_datetime(invoice_obj.get("period_start"))
+    invoice.period_end = _unix_to_datetime(invoice_obj.get("period_end"))
+    invoice.paid_at = datetime.now(timezone.utc)
+    invoice.invoice_url = invoice_obj.get("hosted_invoice_url")
+    invoice.pdf_url = invoice_obj.get("invoice_pdf")
+    await db.flush()
+
+
+_WEBHOOK_HANDLERS = {
+    "checkout.session.completed": _handle_checkout_completed,
+    "customer.subscription.updated": _handle_subscription_updated,
+    "customer.subscription.deleted": _handle_subscription_deleted,
+    "invoice.paid": _handle_invoice_paid,
+}
+
+
 @router.post("/billing/webhooks/stripe")
-async def stripe_webhook(request: Request):
-    """Handle Stripe webhook events."""
+async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db_session)):
+    """Handle Stripe webhook events: sync local Subscription/Invoice state."""
     stripe = _get_stripe()
     if not stripe:
         raise HTTPException(status_code=503, detail="Stripe not configured")
@@ -301,14 +457,15 @@ async def stripe_webhook(request: Request):
     event_type = event.get("type", "")
     logger.info("Stripe webhook: %s", event_type)
 
-    # Handle events
-    if event_type == "checkout.session.completed":
-        logger.info("Checkout completed: %s", event["data"]["object"].get("id"))
-    elif event_type == "customer.subscription.updated":
-        logger.info("Subscription updated: %s", event["data"]["object"].get("id"))
-    elif event_type == "customer.subscription.deleted":
-        logger.info("Subscription deleted: %s", event["data"]["object"].get("id"))
-    elif event_type == "invoice.paid":
-        logger.info("Invoice paid: %s", event["data"]["object"].get("id"))
+    handler = _WEBHOOK_HANDLERS.get(event_type)
+    if handler is not None:
+        try:
+            await handler(db, event["data"]["object"])
+        except Exception as e:
+            # Never let a fulfillment bug surface as a 500 that makes
+            # Stripe retry indefinitely against the same broken event —
+            # log it and acknowledge receipt; the event is visible in the
+            # Stripe dashboard for manual replay if it truly needs one.
+            logger.error("Stripe webhook fulfillment failed for %s: %s", event_type, e, exc_info=True)
 
     return {"received": True}
